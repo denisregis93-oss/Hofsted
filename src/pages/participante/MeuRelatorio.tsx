@@ -42,6 +42,9 @@ export default function MeuRelatorio() {
   const dep = Object.fromEntries(rel.departamento_media.map((m) => [m.dimensao, m]));
   const nEmp = rel.empresa_media[0]?.n ?? 0;
   const nDep = rel.departamento_media[0]?.n ?? 0;
+  const ch = rel.pesquisa.coletar_hoje !== false, cd = rel.pesquisa.coletar_deveria !== false, ambos = ch && cd;
+  const base = ch ? "hoje" : "deveria";
+  const media = (m: { media_hoje: number | null; media_deveria: number | null } | undefined) => (m ? (ch ? m.media_hoje : m.media_deveria) : null);
 
   return (
     <div className="container">
@@ -55,7 +58,7 @@ export default function MeuRelatorio() {
       </div>
 
       <div className="card">
-        <h2 style={{ marginTop: 0 }}>Como você vê a empresa</h2>
+        <h2 style={{ marginTop: 0 }}>{ch ? "Como você vê a empresa" : "Como você gostaria que a empresa fosse"}</h2>
         <GraficoDimensoes dims={ordem.map((d) => ({ dimensao: d, hoje: meu[d]?.hoje ?? null, deveria: meu[d]?.deveria ?? null }))} />
         <p className="small muted">Escala de 1 a 5, após o tratamento metodológico das respostas. Nota alta indica maior presença da dimensão nomeada.</p>
       </div>
@@ -65,17 +68,19 @@ export default function MeuRelatorio() {
         <div className="tabela-wrap">
           <table>
             <thead><tr>
-              <th>Dimensão</th><th className="num">Você — hoje</th><th className="num">Você — deveria</th><th className="num">Seu gap</th>
-              <th className="num">{rel.departamento} — hoje ({nDep})</th><th className="num">Empresa — hoje ({nEmp})</th><th className="num">Empresa — gap</th>
+              <th>Dimensão</th>
+              {ch && <th className="num">Você — hoje</th>}{cd && <th className="num">Você — deveria</th>}{ambos && <th className="num">Seu gap</th>}
+              <th className="num">{rel.departamento} — {base} ({nDep})</th><th className="num">Empresa — {base} ({nEmp})</th>
+              {ambos && <th className="num">Empresa — gap</th>}
             </tr></thead>
             <tbody>
               {ordem.map((d) => (
                 <tr key={d}>
                   <td>{DIM[d].nome}</td>
-                  <td className="num">{fmt(meu[d]?.hoje)}</td><td className="num">{fmt(meu[d]?.deveria)}</td>
-                  <td className="num"><strong>{fmtGap(meu[d]?.gap)}</strong></td>
-                  <td className="num">{fmt(dep[d]?.media_hoje)}</td><td className="num">{fmt(emp[d]?.media_hoje)}</td>
-                  <td className="num">{fmtGap(emp[d]?.gap)}</td>
+                  {ch && <td className="num">{fmt(meu[d]?.hoje)}</td>}{cd && <td className="num">{fmt(meu[d]?.deveria)}</td>}
+                  {ambos && <td className="num"><strong>{fmtGap(meu[d]?.gap)}</strong></td>}
+                  <td className="num">{fmt(media(dep[d]))}</td><td className="num">{fmt(media(emp[d]))}</td>
+                  {ambos && <td className="num">{fmtGap(emp[d]?.gap)}</td>}
                 </tr>
               ))}
             </tbody>
@@ -87,16 +92,18 @@ export default function MeuRelatorio() {
         {ordem.map((d) => {
           const m = meu[d];
           if (!m) return null;
-          const dif = emp[d]?.media_hoje != null ? m.hoje - Number(emp[d].media_hoje) : null;
+          const meuValor = ch ? m.hoje : m.deveria;
+          const empValor = media(emp[d]);
+          const dif = meuValor != null && empValor != null ? meuValor - Number(empValor) : null;
           return (
             <div className="card" key={d} style={{ marginBottom: 0 }}>
               <h3 style={{ marginTop: 0 }}>{DIM[d].nome}</h3>
               <p className="small muted">{DIM[d].mede}</p>
-              <p>Você percebe esta dimensão hoje como <strong>{descreverNivel(m.hoje).toLowerCase()}</strong> ({fmt(m.hoje)}).
-                {dif !== null && Math.abs(dif) >= 0.5 && <> Sua percepção está {dif > 0 ? "acima" : "abaixo"} da média da empresa ({fmt(emp[d].media_hoje)}).</>}
-                {dif !== null && Math.abs(dif) < 0.5 && <> Sua percepção está próxima da média da empresa.</>}
+              <p>{ch ? "Você percebe esta dimensão hoje como" : "Você gostaria que esta dimensão fosse"} <strong>{descreverNivel(meuValor).toLowerCase()}</strong> ({fmt(meuValor)}).
+                {dif !== null && Math.abs(dif) >= 0.5 && <> {ch ? "Sua percepção" : "Sua preferência"} está {dif > 0 ? "acima" : "abaixo"} da média da empresa ({fmt(empValor)}).</>}
+                {dif !== null && Math.abs(dif) < 0.5 && <> {ch ? "Sua percepção" : "Sua preferência"} está próxima da média da empresa.</>}
               </p>
-              <p className="small"><strong>O que você deseja:</strong> {direcaoGap(m.gap, DIM[d])}</p>
+              {ambos && <p className="small"><strong>O que você deseja:</strong> {direcaoGap(m.gap, DIM[d])}</p>}
               <p className="small muted">Polo alto: {DIM[d].poloAlto}<br />Polo baixo: {DIM[d].poloBaixo}</p>
             </div>
           );

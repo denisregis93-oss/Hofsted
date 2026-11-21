@@ -14,7 +14,11 @@ function paraInput(iso?: string) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-const VAZIA: Partial<Pesquisa> = { titulo: "", descricao: "", empresa_nome: "", inicio: "", fim: "", responsavel_nome: "", responsavel_email: "" };
+const VAZIA: Partial<Pesquisa> = { titulo: "", descricao: "", empresa_nome: "", inicio: "", fim: "", responsavel_nome: "", responsavel_email: "", coletar_hoje: true, coletar_deveria: true };
+
+export function rotuloColunas(p: { coletar_hoje: boolean; coletar_deveria: boolean }) {
+  return p.coletar_hoje && p.coletar_deveria ? "É hoje + Deveria ser" : p.coletar_hoje ? "Só É hoje" : "Só Deveria ser";
+}
 
 export default function Pesquisas() {
   const [lista, setLista] = useState<Pesquisa[] | null>(null);
@@ -27,6 +31,7 @@ export default function Pesquisas() {
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault(); setErro("");
+    if (!edit!.coletar_hoje && !edit!.coletar_deveria) { setErro("Selecione pelo menos uma coluna do questionário."); return; }
     try {
       const p = { ...edit, inicio: new Date(edit!.inicio!).toISOString(), fim: new Date(edit!.fim!).toISOString() };
       await admin.salvarPesquisa(p);
@@ -63,6 +68,21 @@ export default function Pesquisas() {
             <div><label htmlFor="rn">Responsável pela pesquisa</label><input id="rn" required value={edit.responsavel_nome} onChange={(e) => setEdit({ ...edit, responsavel_nome: e.target.value })} /></div>
             <div><label htmlFor="re">E-mail do responsável (para justificativas)</label><input id="re" type="email" required value={edit.responsavel_email} onChange={(e) => setEdit({ ...edit, responsavel_email: e.target.value })} /></div>
           </div>
+          <fieldset style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "8px 14px", marginTop: 14 }}>
+            <legend style={{ fontWeight: 600, fontSize: ".9rem", padding: "0 4px" }}>Colunas do questionário</legend>
+            <label className="row" style={{ fontWeight: 400, margin: "6px 0" }}>
+              <input type="checkbox" checked={!!edit.coletar_hoje} disabled={!!edit.id && (edit.respondentes ?? 0) > 0}
+                onChange={(e) => setEdit({ ...edit, coletar_hoje: e.target.checked })} />
+              <span><strong>É hoje</strong> — cultura percebida na prática</span>
+            </label>
+            <label className="row" style={{ fontWeight: 400, margin: "6px 0" }}>
+              <input type="checkbox" checked={!!edit.coletar_deveria} disabled={!!edit.id && (edit.respondentes ?? 0) > 0}
+                onChange={(e) => setEdit({ ...edit, coletar_deveria: e.target.checked })} />
+              <span><strong>Deveria ser</strong> — cultura desejada</span>
+            </label>
+            <p className="small muted">O gap (Deveria ser − É hoje) e a comparação entre cultura atual e desejada só existem quando as duas colunas são coletadas.
+              {!!edit.id && (edit.respondentes ?? 0) > 0 && " As colunas não podem ser alteradas porque a pesquisa já tem respostas."}</p>
+          </fieldset>
           <label htmlFor="d">Mensagem de abertura (opcional)</label>
           <textarea id="d" value={edit.descricao ?? ""} onChange={(e) => setEdit({ ...edit, descricao: e.target.value })} placeholder="Texto exibido ao funcionário antes de informar o e-mail." />
           {!edit.id && <p className="small muted">Ao criar, todos os funcionários <strong>ativos</strong> passam a ser o público da pesquisa. Funcionários importados depois podem ser incluídos pelo botão "Incluir novos funcionários".</p>}
@@ -81,7 +101,7 @@ export default function Pesquisas() {
             <tbody>
               {lista.map((p) => (
                 <tr key={p.id}>
-                  <td><Link to={`/admin/pesquisa/${p.id}`}><strong>{p.titulo}</strong></Link><div className="small muted">{p.empresa_nome}</div></td>
+                  <td><Link to={`/admin/pesquisa/${p.id}`}><strong>{p.titulo}</strong></Link><div className="small muted">{p.empresa_nome} · {rotuloColunas(p)}</div></td>
                   <td className="small">{fmtData(p.inicio, true)}<br />a {fmtData(p.fim, true)}</td>
                   <td><span className={`selo ${p.status}`}>{p.status}</span></td>
                   <td className="num">{p.respondentes}/{p.elegiveis}<div className="small muted">{p.elegiveis ? Math.round((p.respondentes / p.elegiveis) * 100) : 0}%</div></td>

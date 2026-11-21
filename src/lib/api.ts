@@ -30,19 +30,20 @@ export type Situacao =
 export interface InfoPesquisa {
   titulo: string; descricao: string | null; empresa_nome: string; inicio: string; fim: string;
   status: "agendada" | "aberta" | "encerrada"; responsavel_nome: string; responsavel_email: string;
+  coletar_hoje: boolean; coletar_deveria: boolean;
 }
 export interface RespostaAcesso {
   situacao: Situacao; inicio?: string; fim?: string; nome?: string; respondeu_em?: string | null;
   responsavel_nome?: string; responsavel_email?: string;
 }
 export interface Questionario {
-  pesquisa: { titulo: string; empresa_nome: string; fim: string; responsavel_nome: string; responsavel_email: string };
+  pesquisa: { titulo: string; empresa_nome: string; fim: string; responsavel_nome: string; responsavel_email: string; coletar_hoje: boolean; coletar_deveria: boolean };
   partes: { ordem: number; nome: string; descricao: string; itens: { numero: number; texto: string }[] }[];
 }
 export interface RelatorioIndividual {
-  pesquisa: { titulo: string; empresa_nome: string; fim: string; status: string };
+  pesquisa: { titulo: string; empresa_nome: string; fim: string; status: string; coletar_hoje: boolean; coletar_deveria: boolean };
   departamento: string;
-  meu: { dimensao: CodigoDimensao; hoje: number; deveria: number; gap: number }[];
+  meu: { dimensao: CodigoDimensao; hoje: number | null; deveria: number | null; gap: number | null }[];
   departamento_media: EstatDimensao[];
   empresa_media: EstatDimensao[];
 }
@@ -64,7 +65,7 @@ export const participante = {
     rpc<{ situacao: string; token?: string; nome?: string; mensagem?: string }>("hof_validar_codigo",
       { p_codigo: codigo, p_email: email, p_codigo_acesso: codigoAcesso }),
   questionario: (token: string) => rpc<Questionario>("hof_questionario", { p_token: token }),
-  enviar: (token: string, itens: { item: number; hoje: number; deveria: number }[], a1: string, a2: string) =>
+  enviar: (token: string, itens: { item: number; hoje?: number; deveria?: number }[], a1: string, a2: string) =>
     rpc<{ recibo: string }>("hof_enviar_respostas", { p_token: token, p_itens: itens, p_aberta_1: a1, p_aberta_2: a2 }),
   relatorio: (codigo: string, recibo: string) => rpc<RelatorioIndividual>("hof_relatorio_individual", { p_codigo: codigo, p_recibo: recibo }),
 };
@@ -74,6 +75,7 @@ export interface Pesquisa {
   id: string; codigo: string; titulo: string; descricao: string | null; empresa_nome: string;
   inicio: string; fim: string; responsavel_nome: string; responsavel_email: string;
   status: "agendada" | "aberta" | "encerrada"; elegiveis: number; respondentes: number;
+  coletar_hoje: boolean; coletar_deveria: boolean;
 }
 export interface Funcionario { id: string; nome: string; email: string; departamento_id: string; departamento: string; ativo: boolean }
 export interface Departamento { id: string; nome: string; funcionarios_ativos: number }
@@ -111,7 +113,7 @@ export const admin = {
   compararDepartamentos: (id: string) =>
     rpc<{ departamento_id: string; departamento: string; dimensoes: EstatDimensao[] }[]>("hof_comparar_departamentos", { p_pesquisa: id }),
   evolucao: (dep: string | null) =>
-    rpc<{ pesquisa_id: string; titulo: string; inicio: string; dimensoes: EstatDimensao[] }[]>("hof_evolucao", { p_departamento: dep }),
+    rpc<{ pesquisa_id: string; titulo: string; inicio: string; coletar_hoje: boolean; coletar_deveria: boolean; dimensoes: EstatDimensao[] }[]>("hof_evolucao", { p_departamento: dep }),
   qualidade: (id: string) => rpc<ItemQualidade[]>("hof_qualidade", { p_pesquisa: id }),
   definirExclusao: (resposta: string, excluir: boolean, motivo: string | null) =>
     rpc<void>("hof_definir_exclusao", { p_resposta: resposta, p_excluir: excluir, p_motivo: motivo }),

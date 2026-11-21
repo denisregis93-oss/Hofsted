@@ -62,7 +62,10 @@ export default function Pesquisa() {
   }, [resp, a1, a2, etapa, codigo]);
 
   const todosItens = useMemo(() => q?.partes.flatMap((p) => p.itens) ?? [], [q]);
-  const respondidos = todosItens.filter((i) => resp[i.numero]?.hoje && resp[i.numero]?.deveria).length;
+  const eixos = useMemo(() => (["hoje", "deveria"] as const).filter((e) =>
+    e === "hoje" ? q?.pesquisa.coletar_hoje !== false : q?.pesquisa.coletar_deveria !== false), [q]);
+  const completo = (n: number) => eixos.every((e) => resp[n]?.[e]);
+  const respondidos = todosItens.filter((i) => completo(i.numero)).length;
 
   async function continuarEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -112,20 +115,22 @@ export default function Pesquisa() {
     setErro("");
     if (respondidos < todosItens.length) {
       setMostrarFaltando(true);
-      setErro(`Faltam ${todosItens.length - respondidos} afirmação(ões). Os itens destacados precisam das duas notas.`);
-      const primeiro = todosItens.find((i) => !(resp[i.numero]?.hoje && resp[i.numero]?.deveria));
+      setErro(`Faltam ${todosItens.length - respondidos} afirmação(ões). ${eixos.length > 1 ? "Os itens destacados precisam das duas notas." : "Complete os itens destacados."}`);
+      const primeiro = todosItens.find((i) => !completo(i.numero));
       if (primeiro) document.getElementById(`item-${primeiro.numero}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    const hoje = todosItens.map((i) => resp[i.numero]!.hoje!);
-    const dev = todosItens.map((i) => resp[i.numero]!.deveria!);
-    if (!confirmarReta && (detectarRespostaReta(hoje) || detectarRespostaReta(dev))) {
+    if (!confirmarReta && eixos.some((e) => detectarRespostaReta(todosItens.map((i) => resp[i.numero]![e]!)))) {
       setConfirmarReta(true);
       return;
     }
     setOcupado(true);
     try {
-      const itens = todosItens.map((i) => ({ item: i.numero, hoje: resp[i.numero]!.hoje!, deveria: resp[i.numero]!.deveria! }));
+      const itens = todosItens.map((i) => {
+        const r: { item: number; hoje?: number; deveria?: number } = { item: i.numero };
+        for (const e of eixos) r[e] = resp[i.numero]![e]!;
+        return r;
+      });
       const r = await participante.enviar(token, itens, a1, a2);
       limparRascunho(codigo);
       setRecibo(r.recibo);
@@ -189,21 +194,21 @@ export default function Pesquisa() {
       {etapa === "orientacoes" && (
         <div className="card">
           <h2 style={{ marginTop: 0 }}>{nome ? `Olá, ${nome}!` : "Orientações"}</h2>
-          <p>Este questionário mapeia como a cultura da {info.empresa_nome} é percebida hoje e como você acredita que ela deveria ser. É um <strong>diagnóstico coletivo</strong>, não uma avaliação individual.</p>
+          <p>Este questionário mapeia {eixos.length > 1 ? <>como a cultura da {info.empresa_nome} é percebida hoje e como você acredita que ela deveria ser</> : eixos[0] === "hoje" ? <>como a cultura da {info.empresa_nome} é percebida hoje</> : <>como você acredita que a cultura da {info.empresa_nome} deveria ser</>}. É um <strong>diagnóstico coletivo</strong>, não uma avaliação individual.</p>
           <p>Não há resposta certa ou errada. O instrumento não avalia desempenho nem serve de base para avaliação de performance. Sua resposta espontânea é a mais valiosa.</p>
           <div className="aviso info">
             <strong>Anonimato:</strong> suas respostas são gravadas <strong>sem vínculo com o seu nome ou e-mail</strong> e consolidadas em médias de grupo. O sistema registra apenas que você participou, para garantir uma resposta por pessoa.
           </div>
-          <p><strong>Como preencher:</strong> para cada uma das 36 afirmações, marque duas notas de 1 a 5:</p>
+          <p><strong>Como preencher:</strong> para cada uma das 36 afirmações, marque {eixos.length > 1 ? "duas notas" : "uma nota"} de 1 a 5:</p>
           <ul>
-            <li><strong style={{ color: "var(--hoje)" }}>É HOJE</strong> — como a empresa funciona na prática, no dia a dia que você observa.</li>
-            <li><strong style={{ color: "var(--deveria)" }}>DEVERIA SER</strong> — como você acredita que seria o ideal.</li>
+            {eixos.includes("hoje") && <li><strong style={{ color: "var(--hoje)" }}>É HOJE</strong> — como a empresa funciona na prática, no dia a dia que você observa.</li>}
+            {eixos.includes("deveria") && <li><strong style={{ color: "var(--deveria)" }}>DEVERIA SER</strong> — como você acredita que seria o ideal.</li>}
           </ul>
           <p className="small">Escala: 1 = discordo totalmente · 2 = discordo · 3 = neutro · 4 = concordo · 5 = concordo totalmente.</p>
           <div className="aviso warn">
-            Você vai encontrar afirmações que parecem defender ideias opostas. <strong>Isso é intencional.</strong> Não tente decidir se a frase está certa ou errada — leia a frase inteira, até o ponto final, e responda se ela descreve o que acontece hoje na empresa e, na outra coluna, se você acredita que deveria acontecer. Não tente ser coerente com a resposta anterior: cada frase é avaliada isoladamente.
+            Você vai encontrar afirmações que parecem defender ideias opostas. <strong>Isso é intencional.</strong> Não tente decidir se a frase está certa ou errada — leia a frase inteira, até o ponto final, e responda {eixos.length > 1 ? "se ela descreve o que acontece hoje na empresa e, na outra coluna, se você acredita que deveria acontecer" : eixos[0] === "hoje" ? "se ela descreve o que acontece hoje na empresa" : "se você acredita que isso deveria acontecer na empresa"}. Não tente ser coerente com a resposta anterior: cada frase é avaliada isoladamente.
           </div>
-          <p>As duas colunas podem ter a mesma nota — isso é um resultado válido e significa que, naquele aspecto, você está satisfeito com a empresa hoje.</p>
+          {eixos.length > 1 && <p>As duas colunas podem ter a mesma nota — isso é um resultado válido e significa que, naquele aspecto, você está satisfeito com a empresa hoje.</p>}
           <p>Responda pela empresa como um todo (não apenas pela sua área), de forma intuitiva e sem consultar colegas. Tempo estimado: <strong>12 a 15 minutos</strong>. Suas respostas ficam salvas neste navegador até o envio, e você pode revisá-las antes de enviar.</p>
           <button onClick={() => { setEtapa("questionario"); window.scrollTo(0, 0); }}>Começar</button>
         </div>
@@ -221,12 +226,12 @@ export default function Pesquisa() {
               <p className="muted small">{p.descricao}</p>
               {p.itens.map((i) => {
                 const r = resp[i.numero] ?? {};
-                const falta = mostrarFaltando && !(r.hoje && r.deveria);
+                const falta = mostrarFaltando && !completo(i.numero);
                 return (
                   <div className={`item-q ${falta ? "faltando" : ""}`} key={i.numero} id={`item-${i.numero}`}>
                     <div className="texto"><span className="num">{i.numero}.</span>{i.texto}</div>
-                    <div className="escalas">
-                      {(["hoje", "deveria"] as const).map((eixo) => (
+                    <div className={`escalas ${eixos.length === 1 ? "uma" : ""}`}>
+                      {eixos.map((eixo) => (
                         <fieldset className={`escala ${eixo}`} key={eixo} style={{ border: "none", padding: 0, margin: 0 }}>
                           <legend className="rot">{eixo === "hoje" ? "É HOJE" : "DEVERIA SER"}</legend>
                           <div className="opcoes">
@@ -256,7 +261,7 @@ export default function Pesquisa() {
           </section>
           {confirmarReta && (
             <div className="aviso warn" role="alert">
-              Você marcou a mesma nota em quase todas as afirmações de uma das colunas. Cada frase descreve um aspecto diferente da cultura —
+              Você marcou a mesma nota em quase todas as afirmações{eixos.length > 1 ? " de uma das colunas" : ""}. Cada frase descreve um aspecto diferente da cultura —
               vale revisar lendo cada uma até o fim. Se essa é mesmo a sua percepção, pode enviar assim.
             </div>
           )}

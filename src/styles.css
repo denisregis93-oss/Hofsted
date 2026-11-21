@@ -166,3 +166,4 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   body { background: #fff; color: #000; }
   .card { box-shadow: none; break-inside: avoid; }
 }
+.escalas.uma { grid-template-columns: minmax(0, 420px); }

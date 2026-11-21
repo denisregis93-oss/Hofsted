@@ -339,6 +339,17 @@ export interface EstatDimensao {
   dp_gap: number | null;
 }
 
+/** Eixo usado para a leitura principal: É hoje quando coletado; senão, Deveria ser. */
+export function principal(d: EstatDimensao): { media: number | null; dp: number | null; eixo: "hoje" | "deveria" } {
+  return d.media_hoje !== null && d.media_hoje !== undefined
+    ? { media: d.media_hoje, dp: d.dp_hoje, eixo: "hoje" }
+    : { media: d.media_deveria, dp: d.dp_deveria, eixo: "deveria" };
+}
+
+export function temGap(dims: { gap: number | null }[]): boolean {
+  return dims.some((d) => d.gap !== null && d.gap !== undefined);
+}
+
 export interface Alerta { tipo: "discurso_duplo" | "lideranca_dividida" | "amostra"; titulo: string; texto: string }
 
 /** Cruzamentos 7 e 8 + alerta de amostra pequena. */
@@ -350,14 +361,14 @@ export function alertas(dims: EstatDimensao[], respondentes: number): Alerta[] {
       texto: `Com ${respondentes} respondente(s), os resultados são apenas descritivos e o anonimato fica frágil. Evite apresentar este recorte isoladamente.`,
     });
   }
-  const duplo = dims.filter((d) => classificarGap(d.gap) === "alto" && classificarConsenso(d.dp_hoje) === "baixo");
+  const duplo = dims.filter((d) => d.gap !== null && classificarGap(d.gap) === "alto" && classificarConsenso(d.dp_hoje) === "baixo");
   for (const d of duplo) {
     out.push({
       tipo: "discurso_duplo", titulo: `Risco de discurso duplo — ${d.nome}`,
       texto: `Gap alto (${fmt(d.gap)}) com consenso baixo (DP ${fmt(d.dp_hoje)}). O que se declara e o que se pratica divergem, e o grupo não concorda sobre qual é a prática real — terreno de cinismo organizacional. Antes de qualquer ação, reconciliar discurso e prática. Pergunte: o que a empresa declara sobre essa dimensão e o que pratica de fato? ${DIM[d.dimensao].alerta}`,
     });
   }
-  const dispersas = dims.filter((d) => classificarConsenso(d.dp_hoje) === "baixo");
+  const dispersas = dims.filter((d) => classificarConsenso(principal(d).dp) === "baixo");
   if (dispersas.length >= 3) {
     out.push({
       tipo: "lideranca_dividida", titulo: "Perfil de percepção dividida",

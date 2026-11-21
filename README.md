@@ -12,7 +12,7 @@ Aplicação para pesquisa de **cultura organizacional percebida** entre funcion�
 
 **RH (`#/admin`)**
 - Importação de funcionários por planilha (.xlsx/.xls/.csv: Nome, E-mail, Departamento), com prévia, validação e opção de inativar ausentes.
-- Criação de quantas pesquisas quiser, com período (início/fim), responsável e nome da empresa. O público é congelado na criação (com opção de incluir novos funcionários depois).
+- Criação de quantas pesquisas quiser, com período (início/fim), responsável, nome da empresa e **colunas do questionário**: É HOJE, DEVERIA SER ou as duas. Com uma só coluna não há gap; os relatórios mostram apenas o que foi coletado. As colunas ficam travadas quando a pesquisa recebe a primeira resposta. O público é congelado na criação (com opção de incluir novos funcionários depois).
 - Acompanhamento de adesão por departamento e lista de pendentes.
 - Resultados da **empresa** e por **departamento**: médias, desvio-padrão (consenso), gap, leitura de cada dimensão, 6 cruzamentos em quadrantes (hoje × desejado), alertas de **discurso duplo** e **percepção dividida**, detalhe por item.
 - Comparação entre departamentos, **evolução entre pesquisas**, respostas abertas (ordem aleatória), controle de qualidade (resposta reta, alternada, polarizada, contradições) com exclusão justificada.
@@ -81,4 +81,5 @@ O último comando roda os testes das regras de leitura da metodologia.
 
 - `npm test`: regras de leitura da metodologia (faixas de consenso e gap, quadrantes, alertas).
 - `supabase/tests/teste_fluxo.sql`: fluxo completo no banco (importação, código de acesso, envio, resposta única, recodificação, alertas de qualidade, relatório individual, exclusão, permissões e situações de prazo). Cole no SQL Editor do Supabase e execute. Tudo é desfeito no final, e a mensagem esperada é `RESULTADO: TODOS OS TESTES PASSARAM`.
+- `supabase/tests/teste_colunas.sql`: pesquisas só com É HOJE e só com DEVERIA SER (validação do envio, relatórios, alertas e trava das colunas).
 - `supabase/tests/limpar_dados_teste.sql`: remove pesquisas "TESTE ..." e funcionários `@teste.invalid` criados em testes manuais.

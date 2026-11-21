@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { admin, fmtData, mensagemErro, type Acompanhamento, type ItemQualidade, type Pesquisa, type Relatorio } from "../../lib/api";
-import { DIM, ORIENTACAO_FLAGS, ROTULOS_FLAGS, alertas, classificarConsenso, fmt, fmtGap, type EstatDimensao } from "../../lib/metodologia";
+import { DIM, ORIENTACAO_FLAGS, ROTULOS_FLAGS, alertas, classificarConsenso, fmt, fmtGap, principal, temGap, type EstatDimensao } from "../../lib/metodologia";
 import { Cruzamentos, GraficoDimensoes, LeituraDimensoes, SeloConsenso, SeloGap, TabelaDimensoes } from "../../components/Resultados";
-import { linkPesquisa } from "./Pesquisas";
+import { linkPesquisa, rotuloColunas } from "./Pesquisas";
 
 type Aba = "acompanhamento" | "resultados" | "departamentos" | "qualidade" | "abertas";
 
@@ -32,7 +32,7 @@ export default function PesquisaDetalhe() {
       <div className="row">
         <div>
           <h1>{p.titulo}</h1>
-          <div className="small muted">{p.empresa_nome} · {fmtData(p.inicio, true)} a {fmtData(p.fim, true)} · <span className={`selo ${p.status}`}>{p.status}</span></div>
+          <div className="small muted">{p.empresa_nome} · {fmtData(p.inicio, true)} a {fmtData(p.fim, true)} · {rotuloColunas(p)} · <span className={`selo ${p.status}`}>{p.status}</span></div>
         </div>
       </div>
       <div className="card nao-imprimir" style={{ marginTop: 12 }}>
@@ -59,7 +59,7 @@ export default function PesquisaDetalhe() {
 
       {aba === "acompanhamento" && acomp && <AbaAcompanhamento p={p} a={acomp} recarregar={() => admin.acompanhamento(id).then(setAcomp)} />}
       {aba === "resultados" && <AbaResultados p={p} dep={dep || null} nomeDep={departamentos.find((d) => d.departamento_id === dep)?.departamento} />}
-      {aba === "departamentos" && <AbaDepartamentos id={id} />}
+      {aba === "departamentos" && <AbaDepartamentos id={id} p={p} />}
       {aba === "qualidade" && <AbaQualidade id={id} />}
       {aba === "abertas" && <AbaAbertas id={id} dep={dep || null} />}
     </>
@@ -145,10 +145,10 @@ function AbaResultados({ p, dep, nomeDep }: { p: Pesquisa; dep: string | null; n
       <div className="grid c3">
         <div className="card"><div className="muted small">Respondentes válidos</div><div className="kpi">{r.respondentes}</div>
           <div className="small muted">de {r.elegiveis} no público{r.excluidas ? ` · ${r.excluidas} excluída(s)` : ""}</div></div>
-        <div className="card"><div className="muted small">Maior gap</div>
-          {(() => { const m = [...r.dimensoes].sort((a, b) => Math.abs(b.gap ?? 0) - Math.abs(a.gap ?? 0))[0]; return <><div className="kpi">{fmtGap(m.gap)}</div><div className="small">{m.nome}</div></>; })()}</div>
+        {temGap(r.dimensoes) && <div className="card"><div className="muted small">Maior gap</div>
+          {(() => { const m = [...r.dimensoes].sort((a, b) => Math.abs(b.gap ?? 0) - Math.abs(a.gap ?? 0))[0]; return <><div className="kpi">{fmtGap(m.gap)}</div><div className="small">{m.nome}</div></>; })()}</div>}
         <div className="card"><div className="muted small">Dimensões com consenso baixo</div>
-          <div className="kpi">{r.dimensoes.filter((d) => classificarConsenso(d.dp_hoje) === "baixo").length}</div><div className="small muted">DP &gt; 1,2 em É hoje</div></div>
+          <div className="kpi">{r.dimensoes.filter((d) => classificarConsenso(principal(d).dp) === "baixo").length}</div><div className="small muted">DP &gt; 1,2 em {p.coletar_hoje ? "É hoje" : "Deveria ser"}</div></div>
       </div>
 
       {als.map((a) => <div key={a.titulo} className={`aviso ${a.tipo === "amostra" ? "info" : "warn"}`}><strong>{a.titulo}.</strong> {a.texto}</div>)}
@@ -162,8 +162,9 @@ function AbaResultados({ p, dep, nomeDep }: { p: Pesquisa; dep: string | null; n
           </span></div>
         <GraficoDimensoes dims={r.dimensoes.map((d) => ({ dimensao: d.dimensao, hoje: d.media_hoje, deveria: d.media_deveria }))} />
         <TabelaDimensoes dims={r.dimensoes} />
-        <p className="small muted">Médias após recodificação dos itens invertidos (nota alta = maior presença da dimensão). Gap = Deveria ser − É hoje.
-          Consenso pelo desvio-padrão de É hoje: &lt; 0,8 alto · 0,8–1,2 médio · &gt; 1,2 baixo. Gap: até 0,4 alinhado · 0,4–0,8 médio · acima de 0,8 alto.</p>
+        <p className="small muted">Médias após recodificação dos itens invertidos (nota alta = maior presença da dimensão).
+          Consenso pelo desvio-padrão de {p.coletar_hoje ? "É hoje" : "Deveria ser"}: &lt; 0,8 alto · 0,8–1,2 médio · &gt; 1,2 baixo.
+          {p.coletar_hoje && p.coletar_deveria ? " Gap = Deveria ser − É hoje: até 0,4 alinhado · 0,4–0,8 médio · acima de 0,8 alto." : " Esta pesquisa coletou só uma coluna, por isso não há gap."}</p>
       </div>
 
       <h2>Leitura por dimensão</h2>
@@ -177,10 +178,13 @@ function AbaResultados({ p, dep, nomeDep }: { p: Pesquisa; dep: string | null; n
       <div className="card tabela-wrap">
         <p className="small muted">Itens com DP alto em vários respondentes podem indicar redação ambígua.</p>
         <table>
-          <thead><tr><th>#</th><th>Afirmação</th><th>Dimensão</th><th className="num">É hoje</th><th className="num">DP</th><th className="num">Deveria</th><th className="num">DP</th></tr></thead>
+          <thead><tr><th>#</th><th>Afirmação</th><th>Dimensão</th>
+            {p.coletar_hoje && <><th className="num">É hoje</th><th className="num">DP</th></>}
+            {p.coletar_deveria && <><th className="num">Deveria</th><th className="num">DP</th></>}</tr></thead>
           <tbody>{r.itens.map((i) => (
             <tr key={i.numero}><td>{i.numero}</td><td className="small">{i.texto}</td><td className="small">{DIM[i.dimensao].curto}</td>
-              <td className="num">{fmt(i.media_hoje)}</td><td className="num">{fmt(i.dp_hoje)}</td><td className="num">{fmt(i.media_deveria)}</td><td className="num">{fmt(i.dp_deveria)}</td></tr>
+              {p.coletar_hoje && <><td className="num">{fmt(i.media_hoje)}</td><td className="num">{fmt(i.dp_hoje)}</td></>}
+              {p.coletar_deveria && <><td className="num">{fmt(i.media_deveria)}</td><td className="num">{fmt(i.dp_deveria)}</td></>}</tr>
           ))}</tbody>
         </table>
       </div>
@@ -188,10 +192,10 @@ function AbaResultados({ p, dep, nomeDep }: { p: Pesquisa; dep: string | null; n
   );
 }
 
-function AbaDepartamentos({ id }: { id: string }) {
+function AbaDepartamentos({ id, p }: { id: string; p: Pesquisa }) {
   const [dados, setDados] = useState<{ departamento: string; dimensoes: EstatDimensao[] }[] | null>(null);
   const [erro, setErro] = useState("");
-  const [eixo, setEixo] = useState<"hoje" | "deveria" | "gap">("hoje");
+  const [eixo, setEixo] = useState<"hoje" | "deveria" | "gap">(p.coletar_hoje ? "hoje" : "deveria");
   useEffect(() => { admin.compararDepartamentos(id).then(setDados).catch((e) => setErro(mensagemErro(e))); }, [id]);
   if (erro) return <div className="aviso erro">{erro}</div>;
   if (!dados) return <p className="muted">Calculando…</p>;
@@ -203,7 +207,9 @@ function AbaDepartamentos({ id }: { id: string }) {
       <div className="row">
         <h2 style={{ margin: 0 }}>Comparação entre departamentos</h2><span className="spacer" />
         <select value={eixo} onChange={(e) => setEixo(e.target.value as typeof eixo)} style={{ maxWidth: 200 }} aria-label="Indicador">
-          <option value="hoje">É hoje</option><option value="deveria">Deveria ser</option><option value="gap">Gap</option>
+          {p.coletar_hoje && <option value="hoje">É hoje</option>}
+          {p.coletar_deveria && <option value="deveria">Deveria ser</option>}
+          {p.coletar_hoje && p.coletar_deveria && <option value="gap">Gap</option>}
         </select>
       </div>
       <div className="tabela-wrap" style={{ marginTop: 12 }}>
