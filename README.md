@@ -11,7 +11,8 @@ Aplicação para pesquisa de **cultura organizacional percebida** entre funcion�
 - Ao concluir, recebe um **código pessoal** (XXXX-XXXX-XXXX), a única chave para o **relatório individual** (`#/p/<código>/meu-relatorio`).
 
 **RH (`#/admin`)**
-- Importação de funcionários por planilha (.xlsx/.xls/.csv: Nome, E-mail, Departamento), com prévia, validação e opção de inativar ausentes.
+- Cadastro de funcionários por planilha (.xlsx/.xls/.csv: Nome, E-mail, Departamento), com prévia, validação e opção de inativar ausentes, ou **manualmente**, um a um.
+- **Público de cada pesquisa:** todos os funcionários ativos, ou uma **lista específica de e-mails** (colada ou importada de planilha). Quem não está no cadastro pode ser incluído com "Nome; e-mail; Departamento", que cria o cadastro junto. Na aba Participantes é possível incluir mais pessoas e remover quem ainda não respondeu.
 - Criação de quantas pesquisas quiser, com período (início/fim), responsável, nome da empresa e **colunas do questionário**: É HOJE, DEVERIA SER ou as duas. Com uma só coluna não há gap; os relatórios mostram apenas o que foi coletado. As colunas ficam travadas quando a pesquisa recebe a primeira resposta. O público é congelado na criação (com opção de incluir novos funcionários depois).
 - Acompanhamento de adesão por departamento e lista de pendentes.
 - Resultados da **empresa** e por **departamento**: médias, desvio-padrão (consenso), gap, leitura de cada dimensão, 6 cruzamentos em quadrantes (hoje × desejado), alertas de **discurso duplo** e **percepção dividida**, detalhe por item.
@@ -82,4 +83,5 @@ O último comando roda os testes das regras de leitura da metodologia.
 - `npm test`: regras de leitura da metodologia (faixas de consenso e gap, quadrantes, alertas).
 - `supabase/tests/teste_fluxo.sql`: fluxo completo no banco (importação, código de acesso, envio, resposta única, recodificação, alertas de qualidade, relatório individual, exclusão, permissões e situações de prazo). Cole no SQL Editor do Supabase e execute. Tudo é desfeito no final, e a mensagem esperada é `RESULTADO: TODOS OS TESTES PASSARAM`.
 - `supabase/tests/teste_colunas.sql`: pesquisas só com É HOJE e só com DEVERIA SER (validação do envio, relatórios, alertas e trava das colunas).
+- `supabase/tests/teste_participantes.sql`: público por lista de e-mails (inclusão, cadastro junto, acesso restrito à lista, remoção).
 - `supabase/tests/limpar_dados_teste.sql`: remove pesquisas "TESTE ..." e funcionários `@teste.invalid` criados em testes manuais.

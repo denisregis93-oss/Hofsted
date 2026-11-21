@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { admin, fmtData, mensagemErro, type Pesquisa } from "../../lib/api";
+import { admin, fmtData, mensagemErro, type Pesquisa, type ResultadoParticipantes } from "../../lib/api";
+import { EntradaParticipantes, ResultadoInclusao, incluir } from "../../components/Participantes";
 
 export function linkPesquisa(codigo: string) {
   return `${window.location.origin}${window.location.pathname}#/p/${codigo}`;
@@ -14,7 +15,7 @@ function paraInput(iso?: string) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-const VAZIA: Partial<Pesquisa> = { titulo: "", descricao: "", empresa_nome: "", inicio: "", fim: "", responsavel_nome: "", responsavel_email: "", coletar_hoje: true, coletar_deveria: true };
+const VAZIA: Partial<Pesquisa> = { titulo: "", descricao: "", empresa_nome: "", inicio: "", fim: "", responsavel_nome: "", responsavel_email: "", coletar_hoje: true, coletar_deveria: true, publico: "todos" };
 
 export function rotuloColunas(p: { coletar_hoje: boolean; coletar_deveria: boolean }) {
   return p.coletar_hoje && p.coletar_deveria ? "É hoje + Deveria ser" : p.coletar_hoje ? "Só É hoje" : "Só Deveria ser";
@@ -25,6 +26,8 @@ export default function Pesquisas() {
   const [edit, setEdit] = useState<Partial<Pesquisa> | null>(null);
   const [erro, setErro] = useState("");
   const [copiado, setCopiado] = useState("");
+  const [listaTexto, setListaTexto] = useState("");
+  const [inclusao, setInclusao] = useState<{ titulo: string; id: string; r: ResultadoParticipantes | null } | null>(null);
 
   const carregar = () => admin.pesquisas().then(setLista).catch((e) => setErro(mensagemErro(e)));
   useEffect(() => { carregar(); }, []);
@@ -34,8 +37,12 @@ export default function Pesquisas() {
     if (!edit!.coletar_hoje && !edit!.coletar_deveria) { setErro("Selecione pelo menos uma coluna do questionário."); return; }
     try {
       const p = { ...edit, inicio: new Date(edit!.inicio!).toISOString(), fim: new Date(edit!.fim!).toISOString() };
-      await admin.salvarPesquisa(p);
-      setEdit(null); carregar();
+      const novo = !edit!.id;
+      const id = await admin.salvarPesquisa(p);
+      if (novo && edit!.publico === "lista") {
+        setInclusao({ titulo: edit!.titulo ?? "", id, r: await incluir(id, listaTexto) });
+      }
+      setEdit(null); setListaTexto(""); carregar();
     } catch (err) { setErro(mensagemErro(err)); }
   }
 
@@ -83,15 +90,34 @@ export default function Pesquisas() {
             <p className="small muted">O gap (Deveria ser − É hoje) e a comparação entre cultura atual e desejada só existem quando as duas colunas são coletadas.
               {!!edit.id && (edit.respondentes ?? 0) > 0 && " As colunas não podem ser alteradas porque a pesquisa já tem respostas."}</p>
           </fieldset>
+          <fieldset style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "8px 14px", marginTop: 14 }}>
+            <legend style={{ fontWeight: 600, fontSize: ".9rem", padding: "0 4px" }}>Quem participa</legend>
+            <label className="row" style={{ fontWeight: 400, margin: "6px 0" }}>
+              <input type="radio" name="publico" checked={edit.publico !== "lista"} onChange={() => setEdit({ ...edit, publico: "todos" })} />
+              <span><strong>Todos os funcionários ativos</strong> do cadastro</span>
+            </label>
+            <label className="row" style={{ fontWeight: 400, margin: "6px 0" }}>
+              <input type="radio" name="publico" checked={edit.publico === "lista"} onChange={() => setEdit({ ...edit, publico: "lista" })} />
+              <span><strong>Lista específica de e-mails</strong></span>
+            </label>
+            {edit.publico === "lista" && !edit.id && <EntradaParticipantes valor={listaTexto} onChange={setListaTexto} />}
+            {edit.id && <p className="small muted">Para incluir ou remover participantes, use a aba "Participantes" da pesquisa.</p>}
+          </fieldset>
           <label htmlFor="d">Mensagem de abertura (opcional)</label>
           <textarea id="d" value={edit.descricao ?? ""} onChange={(e) => setEdit({ ...edit, descricao: e.target.value })} placeholder="Texto exibido ao funcionário antes de informar o e-mail." />
-          {!edit.id && <p className="small muted">Ao criar, todos os funcionários <strong>ativos</strong> passam a ser o público da pesquisa. Funcionários importados depois podem ser incluídos pelo botão "Incluir novos funcionários".</p>}
+          {!edit.id && edit.publico !== "lista" && <p className="small muted">Ao criar, todos os funcionários <strong>ativos</strong> passam a ser o público da pesquisa. Funcionários importados depois podem ser incluídos pelo botão "Incluir novos funcionários".</p>}
           <div className="row" style={{ marginTop: 12 }}>
             <button>Salvar</button><button type="button" className="sec" onClick={() => setEdit(null)}>Cancelar</button>
           </div>
         </form>
       )}
 
+      {inclusao && (
+        <div className="card">
+          <p><strong>Pesquisa "{inclusao.titulo}" criada.</strong> <Link to={`/admin/pesquisa/${inclusao.id}`}>Abrir</Link> · <button className="link" onClick={() => setInclusao(null)}>Fechar</button></p>
+          {inclusao.r ? <ResultadoInclusao r={inclusao.r} /> : <p className="small muted">Nenhum participante informado — inclua na aba "Participantes" da pesquisa.</p>}
+        </div>
+      )}
       {lista === null ? <p className="muted">Carregando…</p> : lista.length === 0 ? (
         <div className="card"><p>Nenhuma pesquisa criada ainda.</p><p className="small muted">Comece importando os funcionários em <Link to="/admin/funcionarios">Funcionários</Link> e depois crie a pesquisa.</p></div>
       ) : (
@@ -101,7 +127,7 @@ export default function Pesquisas() {
             <tbody>
               {lista.map((p) => (
                 <tr key={p.id}>
-                  <td><Link to={`/admin/pesquisa/${p.id}`}><strong>{p.titulo}</strong></Link><div className="small muted">{p.empresa_nome} · {rotuloColunas(p)}</div></td>
+                  <td><Link to={`/admin/pesquisa/${p.id}`}><strong>{p.titulo}</strong></Link><div className="small muted">{p.empresa_nome} · {rotuloColunas(p)} · {p.publico === "lista" ? "Lista de e-mails" : "Todos os ativos"}</div></td>
                   <td className="small">{fmtData(p.inicio, true)}<br />a {fmtData(p.fim, true)}</td>
                   <td><span className={`selo ${p.status}`}>{p.status}</span></td>
                   <td className="num">{p.respondentes}/{p.elegiveis}<div className="small muted">{p.elegiveis ? Math.round((p.respondentes / p.elegiveis) * 100) : 0}%</div></td>

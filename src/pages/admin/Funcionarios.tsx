@@ -13,7 +13,7 @@ const ALIAS: Record<keyof Linha, string[]> = {
   departamento: ["departamento", "depto", "setor", "area", "areadiretoria", "diretoria"],
 };
 
-export function lerPlanilha(buf: ArrayBuffer): { linhas: Linha[]; faltando: string[] } {
+export function lerPlanilha(buf: ArrayBuffer, exigir: (keyof Linha)[] = ["nome", "email", "departamento"]): { linhas: Linha[]; faltando: string[] } {
   const wb = XLSX.read(buf, { type: "array" });
   const ws = wb.Sheets[wb.SheetNames[0]];
   const brutas = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "", raw: false });
@@ -23,10 +23,11 @@ export function lerPlanilha(buf: ArrayBuffer): { linhas: Linha[]; faltando: stri
   for (const campo of Object.keys(ALIAS) as (keyof Linha)[]) {
     mapa[campo] = cabecalhos.find((h) => ALIAS[campo].includes(normalizar(h)));
   }
-  const faltando = (Object.keys(ALIAS) as (keyof Linha)[]).filter((c) => !mapa[c]);
+  const faltando = exigir.filter((c) => !mapa[c]);
   if (faltando.length) return { linhas: [], faltando };
+  const col = (r: Record<string, unknown>, c: keyof Linha) => (mapa[c] ? String(r[mapa[c]!] ?? "").trim() : "");
   const linhas = brutas
-    .map((r) => ({ nome: String(r[mapa.nome!] ?? "").trim(), email: String(r[mapa.email!] ?? "").trim(), departamento: String(r[mapa.departamento!] ?? "").trim() }))
+    .map((r) => ({ nome: col(r, "nome"), email: col(r, "email"), departamento: col(r, "departamento") }))
     .filter((l) => l.nome || l.email || l.departamento);
   return { linhas, faltando };
 }
@@ -47,6 +48,8 @@ export default function Funcionarios() {
   const [erro, setErro] = useState("");
   const [filtro, setFiltro] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  const [novo, setNovo] = useState<Linha>({ nome: "", email: "", departamento: "" });
+  const [msgNovo, setMsgNovo] = useState("");
 
   const carregar = () => admin.funcionarios().then(setLista).catch((e) => setErro(mensagemErro(e)));
   useEffect(() => { carregar(); }, []);
@@ -72,6 +75,17 @@ export default function Funcionarios() {
       setPrevia(null); carregar();
     } catch (e) { setErro(mensagemErro(e)); }
     finally { setOcupado(false); }
+  }
+
+  async function cadastrar(e: React.FormEvent) {
+    e.preventDefault(); setErro(""); setMsgNovo("");
+    try {
+      const r = await admin.importar([novo], false);
+      if (r.erros.length) { setErro(r.erros[0].erro); return; }
+      setMsgNovo(r.inseridos ? `${novo.nome} cadastrado(a).` : `${novo.nome} já existia e foi atualizado(a).`);
+      setNovo({ nome: "", email: "", departamento: novo.departamento });
+      carregar();
+    } catch (err) { setErro(mensagemErro(err)); }
   }
 
   async function alternar(f: Funcionario) {
@@ -127,6 +141,17 @@ export default function Funcionarios() {
           </div>
         )}
       </div>
+
+      <form className="card" onSubmit={cadastrar}>
+        <h2 style={{ marginTop: 0 }}>Cadastrar manualmente</h2>
+        <div className="grid c3">
+          <div><label htmlFor="nn">Nome</label><input id="nn" required value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} /></div>
+          <div><label htmlFor="ne">E-mail</label><input id="ne" type="email" required value={novo.email} onChange={(e) => setNovo({ ...novo, email: e.target.value })} /></div>
+          <div><label htmlFor="nd">Departamento</label><input id="nd" required list="lista-deps" value={novo.departamento} onChange={(e) => setNovo({ ...novo, departamento: e.target.value })} />
+            <datalist id="lista-deps">{[...new Set(lista?.map((f) => f.departamento))].map((d) => <option key={d} value={d} />)}</datalist></div>
+        </div>
+        <div className="row" style={{ marginTop: 12 }}><button>Cadastrar</button>{msgNovo && <span className="small" role="status">{msgNovo}</span>}</div>
+      </form>
 
       <div className="card">
         <div className="row">

@@ -5,8 +5,10 @@ import { admin, fmtData, mensagemErro, type Acompanhamento, type ItemQualidade, 
 import { DIM, ORIENTACAO_FLAGS, ROTULOS_FLAGS, alertas, classificarConsenso, fmt, fmtGap, principal, temGap, type EstatDimensao } from "../../lib/metodologia";
 import { Cruzamentos, GraficoDimensoes, LeituraDimensoes, SeloConsenso, SeloGap, TabelaDimensoes } from "../../components/Resultados";
 import { linkPesquisa, rotuloColunas } from "./Pesquisas";
+import { EntradaParticipantes, ResultadoInclusao, incluir } from "../../components/Participantes";
+import type { ResultadoParticipantes } from "../../lib/api";
 
-type Aba = "acompanhamento" | "resultados" | "departamentos" | "qualidade" | "abertas";
+type Aba = "acompanhamento" | "participantes" | "resultados" | "departamentos" | "qualidade" | "abertas";
 
 export default function PesquisaDetalhe() {
   const { id = "" } = useParams();
@@ -42,7 +44,7 @@ export default function PesquisaDetalhe() {
       </div>
 
       <div className="tabs" role="tablist">
-        {([["acompanhamento", "Acompanhamento"], ["resultados", "Resultados"], ["departamentos", "Comparar departamentos"], ["qualidade", "Qualidade"], ["abertas", "Respostas abertas"]] as [Aba, string][]).map(([k, t]) => (
+        {([["acompanhamento", "Acompanhamento"], ["participantes", "Participantes"], ["resultados", "Resultados"], ["departamentos", "Comparar departamentos"], ["qualidade", "Qualidade"], ["abertas", "Respostas abertas"]] as [Aba, string][]).map(([k, t]) => (
           <button key={k} role="tab" aria-selected={aba === k} className={aba === k ? "ativo" : ""} onClick={() => setAba(k)}>{t}</button>
         ))}
       </div>
@@ -58,6 +60,10 @@ export default function PesquisaDetalhe() {
       )}
 
       {aba === "acompanhamento" && acomp && <AbaAcompanhamento p={p} a={acomp} recarregar={() => admin.acompanhamento(id).then(setAcomp)} />}
+      {aba === "participantes" && acomp && <AbaParticipantes p={p} a={acomp} recarregar={() => {
+        admin.acompanhamento(id).then(setAcomp);
+        admin.pesquisas().then((l) => setP(l.find((x) => x.id === id) ?? null));
+      }} />}
       {aba === "resultados" && <AbaResultados p={p} dep={dep || null} nomeDep={departamentos.find((d) => d.departamento_id === dep)?.departamento} />}
       {aba === "departamentos" && <AbaDepartamentos id={id} p={p} />}
       {aba === "qualidade" && <AbaQualidade id={id} />}
@@ -70,7 +76,7 @@ function AbaAcompanhamento({ p, a, recarregar }: { p: Pesquisa; a: Acompanhament
   const [msg, setMsg] = useState("");
   const total = a.departamentos.reduce((s, d) => s + d.elegiveis, 0);
   const resp = a.departamentos.reduce((s, d) => s + d.respondentes, 0);
-  async function incluir() {
+  async function incluirNovos() {
     try { const n = await admin.atualizarElegiveis(p.id); setMsg(`${n} funcionário(s) incluído(s) no público da pesquisa.`); recarregar(); }
     catch (e) { setMsg(mensagemErro(e)); }
   }
@@ -99,7 +105,7 @@ function AbaAcompanhamento({ p, a, recarregar }: { p: Pesquisa; a: Acompanhament
       <div className="card">
         <div className="row">
           <h2 style={{ margin: 0 }}>Pendentes ({a.pendentes.length})</h2><span className="spacer" />
-          {p.status !== "encerrada" && <button className="sec" onClick={incluir}>Incluir novos funcionários</button>}
+          {p.status !== "encerrada" && p.publico !== "lista" && <button className="sec" onClick={incluirNovos}>Incluir novos funcionários</button>}
           {a.pendentes.length > 0 && <button className="sec" onClick={exportarPendentes}>Exportar lista</button>}
         </div>
         {msg && <div className="aviso info">{msg}</div>}
@@ -107,6 +113,72 @@ function AbaAcompanhamento({ p, a, recarregar }: { p: Pesquisa; a: Acompanhament
         <div className="tabela-wrap"><table>
           <thead><tr><th>Nome</th><th>E-mail</th><th>Departamento</th></tr></thead>
           <tbody>{a.pendentes.map((x) => <tr key={x.email}><td>{x.nome}</td><td>{x.email}</td><td>{x.departamento}</td></tr>)}</tbody>
+        </table></div>
+      </div>
+    </>
+  );
+}
+
+function AbaParticipantes({ p, a, recarregar }: { p: Pesquisa; a: Acompanhamento; recarregar: () => void }) {
+  const [texto, setTexto] = useState("");
+  const [r, setR] = useState<ResultadoParticipantes | null>(null);
+  const [erro, setErro] = useState("");
+  const [filtro, setFiltro] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const encerrada = p.status === "encerrada";
+
+  async function adicionar() {
+    setErro(""); setR(null); setOcupado(true);
+    try { const res = await incluir(p.id, texto); setR(res); if (res && !res.erros.length) setTexto(""); recarregar(); }
+    catch (e) { setErro(mensagemErro(e)); }
+    finally { setOcupado(false); }
+  }
+  async function remover(email: string, nome: string) {
+    if (!confirm(`Remover ${nome} (${email}) desta pesquisa?`)) return;
+    setErro("");
+    try { await admin.removerParticipante(p.id, email); recarregar(); } catch (e) { setErro(mensagemErro(e)); }
+  }
+  function exportar() {
+    const ws = XLSX.utils.json_to_sheet(a.participantes.map((x) => ({ Nome: x.nome, "E-mail": x.email, Departamento: x.departamento, Respondeu: x.respondeu ? "Sim" : "Não" })));
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Participantes");
+    XLSX.writeFile(wb, `participantes_${p.codigo}.xlsx`);
+  }
+  const t = filtro.toLowerCase();
+  const lista = a.participantes.filter((x) => !t || x.nome.toLowerCase().includes(t) || x.email.includes(t) || x.departamento.toLowerCase().includes(t));
+
+  return (
+    <>
+      {erro && <div className="aviso erro">{erro}</div>}
+      {!encerrada && (
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Incluir participantes</h2>
+          <p className="small">Cole os e-mails (um por linha) ou importe uma planilha com a coluna E-mail. Para quem ainda não está no cadastro, informe também nome e departamento — o cadastro é criado automaticamente.</p>
+          <EntradaParticipantes valor={texto} onChange={setTexto} />
+          <div className="row" style={{ marginTop: 10 }}><button onClick={adicionar} disabled={ocupado || !texto.trim()}>{ocupado ? "Incluindo…" : "Incluir na pesquisa"}</button></div>
+          {r && <ResultadoInclusao r={r} />}
+        </div>
+      )}
+      <div className="card">
+        <div className="row">
+          <h2 style={{ margin: 0 }}>Participantes ({a.participantes.length})</h2>
+          <span className="small muted">{a.participantes.filter((x) => x.respondeu).length} responderam</span>
+          <span className="spacer" />
+          <input placeholder="Buscar" value={filtro} onChange={(e) => setFiltro(e.target.value)} style={{ maxWidth: 240 }} aria-label="Buscar participante" />
+          {a.participantes.length > 0 && <button className="sec" onClick={exportar}>Exportar</button>}
+        </div>
+        <p className="small muted">{p.publico === "lista" ? "Público definido por lista de e-mails." : "Público: todos os funcionários ativos no momento da criação (mais os incluídos depois)."} A situação mostra apenas se a pessoa participou; o conteúdo das respostas nunca é ligado a ela.</p>
+        <div className="tabela-wrap"><table>
+          <thead><tr><th>Nome</th><th>E-mail</th><th>Departamento</th><th>Situação</th><th></th></tr></thead>
+          <tbody>
+            {lista.map((x) => (
+              <tr key={x.email}>
+                <td>{x.nome}</td><td>{x.email}</td><td>{x.departamento}</td>
+                <td><span className={`selo ${x.respondeu ? "aberta" : "encerrada"}`}>{x.respondeu ? "Respondeu" : "Pendente"}</span></td>
+                <td>{!x.respondeu && !encerrada && <button className="link" onClick={() => remover(x.email, x.nome)}>Remover</button>}</td>
+              </tr>
+            ))}
+            {!lista.length && <tr><td colSpan={5} className="muted">Nenhum participante.</td></tr>}
+          </tbody>
         </table></div>
       </div>
     </>

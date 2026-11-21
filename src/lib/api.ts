@@ -75,7 +75,11 @@ export interface Pesquisa {
   id: string; codigo: string; titulo: string; descricao: string | null; empresa_nome: string;
   inicio: string; fim: string; responsavel_nome: string; responsavel_email: string;
   status: "agendada" | "aberta" | "encerrada"; elegiveis: number; respondentes: number;
-  coletar_hoje: boolean; coletar_deveria: boolean;
+  coletar_hoje: boolean; coletar_deveria: boolean; publico: "todos" | "lista";
+}
+export interface ResultadoParticipantes {
+  incluidos: number; ja_estavam: number; cadastrados: number;
+  erros: { linha: number; email: string | null; erro: string }[];
 }
 export interface Funcionario { id: string; nome: string; email: string; departamento_id: string; departamento: string; ativo: boolean }
 export interface Departamento { id: string; nome: string; funcionarios_ativos: number }
@@ -91,6 +95,7 @@ export interface Relatorio {
 export interface Acompanhamento {
   departamentos: { departamento_id: string; departamento: string; elegiveis: number; respondentes: number }[];
   pendentes: { nome: string; email: string; departamento: string }[];
+  participantes: { nome: string; email: string; departamento: string; respondeu: boolean }[];
 }
 export interface ItemQualidade {
   resposta_id: string; rotulo: string; departamento: string; excluida: boolean; motivo_exclusao: string | null;
@@ -108,6 +113,9 @@ export const admin = {
   salvarPesquisa: (p: Partial<Pesquisa>) => rpc<string>("hof_salvar_pesquisa", { p }),
   excluirPesquisa: (id: string) => rpc<void>("hof_excluir_pesquisa", { p_pesquisa: id }),
   atualizarElegiveis: (id: string) => rpc<number>("hof_atualizar_elegiveis", { p_pesquisa: id }),
+  adicionarParticipantes: (id: string, linhas: LinhaParticipante[]) =>
+    rpc<ResultadoParticipantes>("hof_adicionar_participantes", { p_pesquisa: id, p_linhas: linhas }),
+  removerParticipante: (id: string, email: string) => rpc<void>("hof_remover_participante", { p_pesquisa: id, p_email: email }),
   acompanhamento: (id: string) => rpc<Acompanhamento>("hof_acompanhamento", { p_pesquisa: id }),
   relatorio: (id: string, dep: string | null) => rpc<Relatorio>("hof_relatorio", { p_pesquisa: id, p_departamento: dep }),
   compararDepartamentos: (id: string) =>
@@ -120,6 +128,9 @@ export const admin = {
   abertas: (id: string, dep: string | null) => rpc<{ pergunta: number; texto: string }[]>("hof_respostas_abertas", { p_pesquisa: id, p_departamento: dep }),
   exportarBase: (id: string) => rpc<Record<string, unknown>[]>("hof_exportar_base", { p_pesquisa: id }),
 };
+
+export { interpretarLista, type LinhaParticipante } from "./lista";
+import type { LinhaParticipante } from "./lista";
 
 export function fmtData(iso: string | null | undefined, comHora = false): string {
   if (!iso) return "—";
