@@ -76,3 +76,9 @@ npm test
 ```
 
 O último comando roda os testes das regras de leitura da metodologia.
+
+## Testes
+
+- `npm test`: regras de leitura da metodologia (faixas de consenso e gap, quadrantes, alertas).
+- `supabase/tests/teste_fluxo.sql`: fluxo completo no banco (importação, código de acesso, envio, resposta única, recodificação, alertas de qualidade, relatório individual, exclusão, permissões e situações de prazo). Cole no SQL Editor do Supabase e execute. Tudo é desfeito no final, e a mensagem esperada é `RESULTADO: TODOS OS TESTES PASSARAM`.
+- `supabase/tests/limpar_dados_teste.sql`: remove pesquisas "TESTE ..." e funcionários `@teste.invalid` criados em testes manuais.

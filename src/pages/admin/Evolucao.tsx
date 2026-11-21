@@ -44,7 +44,7 @@ export default function Evolucao() {
                 <YAxis domain={eixo === "gap" ? [-4, 4] : [1, 5]} tick={{ fill: "var(--muted)", fontSize: 12 }} />
                 <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)" }} />
                 <Legend />
-                {DIMENSOES.map((d, i) => <Line key={d.codigo} dataKey={d.codigo} name={d.curto} stroke={CORES[i]} strokeWidth={2} dot />)}
+                {DIMENSOES.map((d, i) => <Line key={d.codigo} dataKey={d.codigo} name={d.curto} stroke={CORES[i]} strokeWidth={2} dot isAnimationActive={false} />)}
               </LineChart>
             </ResponsiveContainer>
           </div>

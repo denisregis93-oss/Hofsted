@@ -20,8 +20,8 @@ export function GraficoDimensoes({ dims }: { dims: { dimensao: CodigoDimensao; h
           <ReferenceLine y={3} stroke="var(--muted)" strokeDasharray="4 4" />
           <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)" }} />
           <Legend />
-          <Bar dataKey="É hoje" fill={COR_HOJE} radius={[4, 4, 0, 0]} />
-          <Bar dataKey="Deveria ser" fill={COR_DEV} radius={[4, 4, 0, 0]} />
+          <Bar dataKey="É hoje" fill={COR_HOJE} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="Deveria ser" fill={COR_DEV} radius={[4, 4, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>

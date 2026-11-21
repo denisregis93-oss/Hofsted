@@ -1,4 +1,4 @@
-import { HashRouter, Link, Route, Routes } from "react-router-dom";
+import { HashRouter, Link, Route, Routes, useParams } from "react-router-dom";
 import Pesquisa from "./pages/participante/Pesquisa";
 import MeuRelatorio from "./pages/participante/MeuRelatorio";
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -7,6 +7,12 @@ import Funcionarios from "./pages/admin/Funcionarios";
 import PesquisaDetalhe from "./pages/admin/PesquisaDetalhe";
 import Evolucao from "./pages/admin/Evolucao";
 import Metodologia from "./pages/admin/Metodologia";
+
+/** Remonta a tela quando o código da pesquisa muda (evita reaproveitar o estado de outra pesquisa). */
+function PesquisaPorCodigo() {
+  const { codigo } = useParams();
+  return <Pesquisa key={codigo} />;
+}
 
 function Inicio() {
   return (
@@ -25,7 +31,7 @@ export default function App() {
     <HashRouter>
       <Routes>
         <Route path="/" element={<Inicio />} />
-        <Route path="/p/:codigo" element={<Pesquisa />} />
+        <Route path="/p/:codigo" element={<PesquisaPorCodigo />} />
         <Route path="/p/:codigo/meu-relatorio" element={<MeuRelatorio />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Pesquisas />} />
