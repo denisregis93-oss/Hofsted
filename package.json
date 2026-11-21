@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:html": "tsc -b && vite build --mode html"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.45.4",
@@ -23,6 +24,7 @@
     "@vitejs/plugin-react": "4.3.3",
     "typescript": "5.6.3",
     "vite": "5.4.11",
+    "vite-plugin-singlefile": "^2.0.3",
     "vitest": "2.1.5"
   }
 }

@@ -57,6 +57,7 @@ Aplicação para pesquisa de **cultura organizacional percebida** entre funcion�
    insert into hofstede.admins (email) values ('pessoa@empresa.com.br');
    ```
 2. **Publicação do site.** Rode `npm install`, depois `npm run build`, e publique a pasta `dist/` (Netlify, Vercel, Cloudflare Pages, GitHub Pages…). As variáveis ficam em `.env`. A chave publicável é pública por natureza.
+   Para publicar como **um único arquivo**, rode `npm run build:html`: o resultado é `dist-html/index.html`, com todo o JavaScript e o CSS embutidos. Basta colocá-lo numa pasta do site, por exemplo `/pesquisa/index.html`.
 3. Em *Authentication → URL Configuration*, adicione a URL do site, para o link de "esqueci a senha" do RH funcionar.
 
 ## Desenvolvimento
