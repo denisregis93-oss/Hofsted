@@ -52,7 +52,7 @@ Aplicação para pesquisa de **cultura organizacional percebida** entre funcion�
 
 ## Configuração (uma vez)
 
-1. **Administradores.** Já existe o administrador `denisregis93@gmail.com`, que entra com a mesma senha da conta Supabase Auth do projeto. Para incluir outro administrador, crie o usuário em *Authentication → Users* e rode:
+1. **Administradores.** Há um login dedicado ao RH (`rh.pesquisa@kaps360.com.br`); a senha foi entregue em particular e deve ser trocada no primeiro acesso pelo botão "Trocar senha". Também é administrador `denisregis93@gmail.com`, que entra com a mesma senha da conta Supabase Auth do projeto. Para incluir outro administrador, crie o usuário em *Authentication → Users* e rode:
    ```sql
    insert into hofstede.admins (email) values ('pessoa@empresa.com.br');
    ```

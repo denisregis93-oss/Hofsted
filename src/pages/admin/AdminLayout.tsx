@@ -7,6 +7,7 @@ import { admin, mensagemErro } from "../../lib/api";
 export default function AdminLayout() {
   const [sessao, setSessao] = useState<Session | null | undefined>(undefined);
   const [ehAdmin, setEhAdmin] = useState<boolean | null>(null);
+  const [trocarSenha, setTrocarSenha] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSessao(data.session));
@@ -41,10 +42,49 @@ export default function AdminLayout() {
           <NavLink to="/admin/metodologia">Metodologia</NavLink>
         </nav>
         <span className="small muted">{sessao.user.email}</span>
+        <button className="sec" onClick={() => setTrocarSenha((v) => !v)}>Trocar senha</button>
         <button className="sec" onClick={() => supabase.auth.signOut()}>Sair</button>
       </header>
-      <main className="container"><Outlet /></main>
+      <main className="container">
+        {trocarSenha && <TrocarSenha fechar={() => setTrocarSenha(false)} />}
+        <Outlet />
+      </main>
     </>
+  );
+}
+
+function TrocarSenha({ fechar }: { fechar: () => void }) {
+  const [senha, setSenha] = useState("");
+  const [conf, setConf] = useState("");
+  const [erro, setErro] = useState("");
+  const [ok, setOk] = useState(false);
+  const [ocupado, setOcupado] = useState(false);
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault(); setErro("");
+    if (senha.length < 10) { setErro("Use pelo menos 10 caracteres."); return; }
+    if (senha !== conf) { setErro("As senhas não conferem."); return; }
+    setOcupado(true);
+    const { error } = await supabase.auth.updateUser({ password: senha });
+    setOcupado(false);
+    if (error) setErro(mensagemErro(error)); else { setOk(true); setSenha(""); setConf(""); }
+  }
+  return (
+    <form className="card" onSubmit={salvar} style={{ maxWidth: 420 }}>
+      <h2 style={{ marginTop: 0 }}>Trocar senha</h2>
+      {ok ? <div className="aviso ok" role="status">Senha alterada. Use a nova senha no próximo acesso.</div> : (
+        <>
+          <label htmlFor="ns">Nova senha</label>
+          <input id="ns" type="password" autoComplete="new-password" value={senha} onChange={(e) => setSenha(e.target.value)} required />
+          <label htmlFor="cs">Confirme a nova senha</label>
+          <input id="cs" type="password" autoComplete="new-password" value={conf} onChange={(e) => setConf(e.target.value)} required />
+          {erro && <div className="aviso erro">{erro}</div>}
+        </>
+      )}
+      <div className="row" style={{ marginTop: 12 }}>
+        {!ok && <button disabled={ocupado}>{ocupado ? "Salvando…" : "Salvar nova senha"}</button>}
+        <button type="button" className="sec" onClick={fechar}>Fechar</button>
+      </div>
+    </form>
   );
 }
 
