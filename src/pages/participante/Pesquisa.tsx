@@ -178,6 +178,9 @@ export default function Pesquisa() {
           <div className="progresso nao-imprimir">
             <div className="row small"><span>{respondidos} de {todosItens.length} afirmações respondidas</span></div>
             <div className="barra" aria-hidden><div style={{ width: `${(respondidos / todosItens.length) * 100}%` }} /></div>
+            <ul className="legenda-escala" aria-label="Legenda das notas">
+              {ESCALA.map((t, i) => <li key={t}><b>{i + 1}</b>{t}</li>)}
+            </ul>
           </div>
           {q.partes.map((p) => (
             <section className="card" key={p.ordem}>
