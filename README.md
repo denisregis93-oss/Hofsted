@@ -5,7 +5,8 @@ Aplicação para pesquisa de **cultura organizacional percebida** entre funcion�
 ## Funcionalidades
 
 **Funcionário (link `#/p/<código>`)**
-- Informa o e-mail → recebe um **código de 6 dígitos por e-mail** → responde o questionário.
+- Informa o e-mail e responde o questionário. O sistema não envia e-mails: o RH divulga o link como preferir.
+- **Atenção:** o e-mail não é verificado. Quem souber o e-mail de um colega que está na lista pode responder no lugar dele (decisão do projeto, em troca de simplicidade).
 - Só funcionários cadastrados e incluídos no público da pesquisa podem responder; **uma resposta por pesquisa**.
 - Fora do prazo: antes do início informa a data de abertura; depois do fim informa se a pessoa **respondeu** ou **deixou de responder** e, nesse caso, recomenda **justificar ao responsável** (com link de e-mail).
 - Ao concluir, recebe um **código pessoal** (XXXX-XXXX-XXXX), a única chave para o **relatório individual** (`#/p/<código>/meu-relatorio`).
@@ -46,21 +47,17 @@ Aplicação para pesquisa de **cultura organizacional percebida** entre funcion�
 - **Back-end:** Supabase (projeto **Tarefas**).
   - Tabelas no esquema privado `hofstede`, que **não é exposto** pela API.
   - Acesso somente via funções `public.hof_*` (`SECURITY DEFINER`). As funções de RH exigem login de um e-mail cadastrado em `hofstede.admins`.
-  - Os funcionários **não** viram usuários do Supabase Auth: o acesso é por código de uso único com sessão própria de 3 horas. Isso evita que ganhem acesso autenticado às outras aplicações do mesmo projeto.
-  - Edge Function `hof-enviar-codigo`: gera o código (RPC restrita ao `service_role`) e envia o e-mail via Resend.
+  - Os funcionários **não** viram usuários do Supabase Auth: ao informar um e-mail liberado, recebem uma sessão própria de 3 horas (`hof_iniciar`). Isso evita que ganhem acesso autenticado às outras aplicações do mesmo projeto.
 - Migrações em `supabase/migrations/` (já aplicadas no projeto Tarefas).
 
 ## Configuração (uma vez)
 
-1. **E-mail (obrigatório para os funcionários receberem o código).** Crie uma conta em [resend.com](https://resend.com), verifique o domínio da empresa e cadastre no Supabase (*Edge Functions → Secrets*):
-   - `RESEND_API_KEY` = chave da API;
-   - `EMAIL_REMETENTE` = `Pesquisa de Cultura <pesquisa@suaempresa.com.br>`.
-2. **Administradores.** Já existe o administrador `denisregis93@gmail.com`, que entra com a mesma senha da conta Supabase Auth do projeto. Para incluir outro administrador, crie o usuário em *Authentication → Users* e rode:
+1. **Administradores.** Já existe o administrador `denisregis93@gmail.com`, que entra com a mesma senha da conta Supabase Auth do projeto. Para incluir outro administrador, crie o usuário em *Authentication → Users* e rode:
    ```sql
    insert into hofstede.admins (email) values ('pessoa@empresa.com.br');
    ```
-3. **Publicação do site.** Rode `npm install`, depois `npm run build`, e publique a pasta `dist/` (Netlify, Vercel, Cloudflare Pages, GitHub Pages…). As variáveis ficam em `.env`. A chave publicável é pública por natureza.
-4. Em *Authentication → URL Configuration*, adicione a URL do site, para o link de "esqueci a senha" do RH funcionar.
+2. **Publicação do site.** Rode `npm install`, depois `npm run build`, e publique a pasta `dist/` (Netlify, Vercel, Cloudflare Pages, GitHub Pages…). As variáveis ficam em `.env`. A chave publicável é pública por natureza.
+3. Em *Authentication → URL Configuration*, adicione a URL do site, para o link de "esqueci a senha" do RH funcionar.
 
 ## Desenvolvimento
 
@@ -81,7 +78,7 @@ O último comando roda os testes das regras de leitura da metodologia.
 ## Testes
 
 - `npm test`: regras de leitura da metodologia (faixas de consenso e gap, quadrantes, alertas).
-- `supabase/tests/teste_fluxo.sql`: fluxo completo no banco (importação, código de acesso, envio, resposta única, recodificação, alertas de qualidade, relatório individual, exclusão, permissões e situações de prazo). Cole no SQL Editor do Supabase e execute. Tudo é desfeito no final, e a mensagem esperada é `RESULTADO: TODOS OS TESTES PASSARAM`.
+- `supabase/tests/teste_fluxo.sql`: fluxo completo no banco (importação, início pelo e-mail, envio, resposta única, recodificação, alertas de qualidade, relatório individual, exclusão, permissões e situações de prazo). Cole no SQL Editor do Supabase e execute. Tudo é desfeito no final, e a mensagem esperada é `RESULTADO: TODOS OS TESTES PASSARAM`.
 - `supabase/tests/teste_colunas.sql`: pesquisas só com É HOJE e só com DEVERIA SER (validação do envio, relatórios, alertas e trava das colunas).
 - `supabase/tests/teste_participantes.sql`: público por lista de e-mails (inclusão, cadastro junto, acesso restrito à lista, remoção).
 - `supabase/tests/limpar_dados_teste.sql`: remove pesquisas "TESTE ..." e funcionários `@teste.invalid` criados em testes manuais.

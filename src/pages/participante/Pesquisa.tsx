@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { fmtData, mensagemErro, participante, type InfoPesquisa, type Questionario, type RespostaAcesso } from "../../lib/api";
 import { detectarRespostaReta } from "../../lib/metodologia";
 
-type Etapa = "email" | "codigo" | "orientacoes" | "questionario" | "concluido" | "situacao";
+type Etapa = "email" | "orientacoes" | "questionario" | "concluido" | "situacao";
 type Nota = 1 | 2 | 3 | 4 | 5;
 type Respostas = Record<number, { hoje?: Nota; deveria?: Nota }>;
 
@@ -27,7 +27,6 @@ export default function Pesquisa() {
   const [info, setInfo] = useState<InfoPesquisa | null | undefined>(undefined);
   const [etapa, setEtapa] = useState<Etapa>("email");
   const [email, setEmail] = useState("");
-  const [codigoAcesso, setCodigoAcesso] = useState("");
   const [acesso, setAcesso] = useState<RespostaAcesso | null>(null);
   const [token, setToken] = useState<string>("");
   const [nome, setNome] = useState("");
@@ -71,40 +70,15 @@ export default function Pesquisa() {
     e.preventDefault();
     setErro(""); setAviso(""); setOcupado(true);
     try {
-      const a = await participante.verificar(codigo, email.trim());
-      setAcesso(a);
-      if (a.situacao !== "pode_responder") { setEtapa("situacao"); return; }
-      const envio = await participante.enviarCodigo(codigo, email.trim());
-      if (envio.situacao === "codigo_enviado") { setEtapa("codigo"); setAviso(`Enviamos um código de 6 dígitos para ${email.trim()}.`); }
-      else if (envio.situacao === "aguarde") { setEtapa("codigo"); setAviso(envio.mensagem ?? "Aguarde para pedir um novo código."); }
-      else if (envio.situacao === "email_nao_configurado") setErro("O envio de e-mails ainda não foi configurado. Avise o responsável pela pesquisa.");
-      else setErro("Não foi possível enviar o código. Tente novamente em instantes.");
-    } catch (err) { setErro(mensagemErro(err)); }
-    finally { setOcupado(false); }
-  }
-
-  async function validarCodigo(e: React.FormEvent) {
-    e.preventDefault();
-    setErro(""); setOcupado(true);
-    try {
-      const r = await participante.validar(codigo, email.trim(), codigoAcesso);
+      const r = await participante.iniciar(codigo, email.trim());
       if (r.situacao === "ok" && r.token) {
         setToken(r.token); setNome(r.nome ?? "");
         try { sessionStorage.setItem(`hof-token-${codigo}`, r.token); } catch { /* */ }
         setQ(await participante.questionario(r.token));
         setEtapa("orientacoes");
-      } else if (r.situacao === "codigo_invalido") setErro(r.mensagem ?? "Código inválido.");
-      else { setAcesso(r as RespostaAcesso); setEtapa("situacao"); }
+      } else { setAcesso(r as RespostaAcesso); setEtapa("situacao"); }
     } catch (err) { setErro(mensagemErro(err)); }
     finally { setOcupado(false); }
-  }
-
-  async function reenviar() {
-    setErro(""); setAviso("");
-    try {
-      const envio = await participante.enviarCodigo(codigo, email.trim());
-      setAviso(envio.situacao === "codigo_enviado" ? "Novo código enviado." : envio.mensagem ?? "Não foi possível reenviar agora.");
-    } catch (err) { setErro(mensagemErro(err)); }
   }
 
   function marcar(item: number, eixo: "hoje" | "deveria", v: Nota) {
@@ -163,29 +137,14 @@ export default function Pesquisa() {
       {etapa === "email" && (
         <form className="card" onSubmit={continuarEmail}>
           {info.descricao && <p>{info.descricao}</p>}
-          <p>Para iniciar, informe o seu e-mail corporativo. Enviaremos um código de acesso para confirmar que é você.</p>
+          <p>Para iniciar, informe o seu e-mail corporativo.</p>
           <label htmlFor="email">E-mail</label>
           <input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <div className="row" style={{ marginTop: 16 }}>
-            <button disabled={ocupado}>{ocupado ? "Verificando…" : "Continuar"}</button>
+            <button disabled={ocupado}>{ocupado ? "Verificando…" : "Iniciar"}</button>
             <span className="spacer" />
             <Link className="small" to={`/p/${codigo}/meu-relatorio`}>Já respondi — ver meu relatório</Link>
           </div>
-        </form>
-      )}
-
-      {etapa === "codigo" && (
-        <form className="card" onSubmit={validarCodigo}>
-          <p>Digite o código de 6 dígitos enviado para <strong>{email}</strong>. Ele vale por 15 minutos.</p>
-          <label htmlFor="cod">Código de acesso</label>
-          <input id="cod" className="codigo-input" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
-            value={codigoAcesso} onChange={(e) => setCodigoAcesso(e.target.value.replace(/\D/g, ""))} required />
-          <div className="row" style={{ marginTop: 16 }}>
-            <button disabled={ocupado || codigoAcesso.length !== 6}>{ocupado ? "Validando…" : "Entrar"}</button>
-            <button type="button" className="sec" onClick={reenviar}>Reenviar código</button>
-            <button type="button" className="link" onClick={() => { setEtapa("email"); setCodigoAcesso(""); setAviso(""); }}>Trocar e-mail</button>
-          </div>
-          <p className="small muted" style={{ marginTop: 12 }}>Não recebeu? Verifique a caixa de spam ou lixo eletrônico.</p>
         </form>
       )}
 

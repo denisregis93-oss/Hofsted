@@ -4,7 +4,7 @@ do $$
 declare
   admin_email text := (select email from hofstede.admins limit 1);
   e1 text; e2 text; e3 text;
-  pid uuid; cod text; r jsonb; g jsonb; v jsonb; itens jsonb; falhas text[] := '{}';
+  pid uuid; cod text; r jsonb; v jsonb; itens jsonb; falhas text[] := '{}';
 begin
   select (array_agg(email order by email))[1], (array_agg(email order by email))[2], (array_agg(email order by email))[3]
     into e1, e2, e3 from hofstede.funcionarios where ativo;
@@ -24,8 +24,7 @@ begin
   if public.hof_verificar_acesso(cod, e3)->>'situacao' <> 'nao_elegivel' then falhas := falhas || 'fora da lista acessou'; end if;
   if public.hof_verificar_acesso(cod, e1)->>'situacao' <> 'pode_responder' then falhas := falhas || 'da lista sem acesso'; end if;
 
-  g := public.hof_gerar_codigo(cod, e1);
-  v := public.hof_validar_codigo(cod, e1, g->>'codigo');
+  v := public.hof_iniciar(cod, e1);
   select jsonb_agg(jsonb_build_object('item', numero, 'hoje', 3, 'deveria', 4)) into itens from hofstede.itens;
   perform public.hof_enviar_respostas(v->>'token', itens, null, null);
   begin perform public.hof_remover_participante(pid, e1); falhas := falhas || 'removeu quem respondeu';

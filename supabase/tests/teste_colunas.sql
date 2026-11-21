@@ -4,7 +4,7 @@ do $$
 declare
   admin_email text := (select email from hofstede.admins limit 1);
   func text := (select email from hofstede.funcionarios where ativo order by email limit 1);
-  pid uuid; pid2 uuid; cod text; cod2 text; g jsonb; v jsonb; itens jsonb; env jsonb; rel jsonb; ind jsonb; falhas text[] := '{}';
+  pid uuid; pid2 uuid; cod text; cod2 text; v jsonb; itens jsonb; env jsonb; rel jsonb; ind jsonb; falhas text[] := '{}';
 begin
   perform set_config('request.jwt.claims', json_build_object('email', admin_email, 'role', 'authenticated')::text, true);
   begin
@@ -17,8 +17,7 @@ begin
   pid := public.hof_salvar_pesquisa(jsonb_build_object('titulo','X','empresa_nome','X','inicio',now()-interval '1 day','fim',now()+interval '1 day',
     'responsavel_nome','RH','responsavel_email','rh@teste.invalid','coletar_hoje',true,'coletar_deveria',false));
   select codigo into cod from hofstede.pesquisas where id = pid;
-  g := public.hof_gerar_codigo(cod, func);
-  v := public.hof_validar_codigo(cod, func, g->>'codigo');
+  v := public.hof_iniciar(cod, func);
   select jsonb_agg(jsonb_build_object('item', numero, 'hoje', 4, 'deveria', 3)) into itens from hofstede.itens;
   begin perform public.hof_enviar_respostas(v->>'token', itens, null, null); falhas := falhas || 'aceitou coluna desligada';
   exception when others then null; end;
@@ -39,8 +38,7 @@ begin
   pid2 := public.hof_salvar_pesquisa(jsonb_build_object('titulo','Y','empresa_nome','X','inicio',now()-interval '1 day','fim',now()+interval '1 day',
     'responsavel_nome','RH','responsavel_email','rh@teste.invalid','coletar_hoje',false,'coletar_deveria',true));
   select codigo into cod2 from hofstede.pesquisas where id = pid2;
-  g := public.hof_gerar_codigo(cod2, func);
-  v := public.hof_validar_codigo(cod2, func, g->>'codigo');
+  v := public.hof_iniciar(cod2, func);
   select jsonb_agg(jsonb_build_object('item', numero, 'deveria', 3)) into itens from hofstede.itens;
   perform public.hof_enviar_respostas(v->>'token', itens, null, null);
   rel := public.hof_relatorio(pid2, null);

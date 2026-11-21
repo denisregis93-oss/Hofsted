@@ -1,4 +1,4 @@
-import { supabase, FUNCOES_URL, ANON_KEY } from "./supabase";
+import { supabase } from "./supabase";
 import type { CodigoDimensao, EstatDimensao } from "./metodologia";
 
 const MENSAGENS: Record<string, string> = {
@@ -51,19 +51,8 @@ export interface RelatorioIndividual {
 export const participante = {
   info: (codigo: string) => rpc<InfoPesquisa | null>("hof_info_pesquisa", { p_codigo: codigo }),
   verificar: (codigo: string, email: string) => rpc<RespostaAcesso>("hof_verificar_acesso", { p_codigo: codigo, p_email: email }),
-  async enviarCodigo(codigo: string, email: string): Promise<{ situacao: string; mensagem?: string }> {
-    const r = await fetch(`${FUNCOES_URL}/hof-enviar-codigo`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: ANON_KEY },
-      body: JSON.stringify({ codigo, email }),
-    });
-    const body = await r.json().catch(() => ({}));
-    if (body?.situacao) return body;
-    throw new Error("Não foi possível enviar o código. Tente novamente em instantes.");
-  },
-  validar: (codigo: string, email: string, codigoAcesso: string) =>
-    rpc<{ situacao: string; token?: string; nome?: string; mensagem?: string }>("hof_validar_codigo",
-      { p_codigo: codigo, p_email: email, p_codigo_acesso: codigoAcesso }),
+  iniciar: (codigo: string, email: string) =>
+    rpc<Omit<RespostaAcesso, "situacao"> & { situacao: Situacao | "ok"; token?: string }>("hof_iniciar", { p_codigo: codigo, p_email: email }),
   questionario: (token: string) => rpc<Questionario>("hof_questionario", { p_token: token }),
   enviar: (token: string, itens: { item: number; hoje?: number; deveria?: number }[], a1: string, a2: string) =>
     rpc<{ recibo: string }>("hof_enviar_respostas", { p_token: token, p_itens: itens, p_aberta_1: a1, p_aberta_2: a2 }),

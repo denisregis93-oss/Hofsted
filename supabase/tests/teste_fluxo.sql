@@ -4,7 +4,7 @@
 do $$
 declare
   admin_email text := (select email from hofstede.admins limit 1);
-  imp jsonb; pid uuid; cod text; g jsonb; v jsonb; env jsonb; itens jsonb; rel jsonb; ind jsonb; fl jsonb; r uuid;
+  imp jsonb; pid uuid; cod text; v jsonb; env jsonb; itens jsonb; rel jsonb; ind jsonb; fl jsonb; r uuid;
   falhas text[] := '{}';
 begin
   perform set_config('request.jwt.claims', json_build_object('email', admin_email, 'role', 'authenticated')::text, true);
@@ -23,17 +23,16 @@ begin
 
   if public.hof_verificar_acesso(cod, 'ninguem@teste.invalid')->>'situacao' <> 'nao_cadastrado' then falhas := falhas || 'nao_cadastrado'; end if;
 
-  g := public.hof_gerar_codigo(cod, 'a@teste.invalid');
-  if public.hof_validar_codigo(cod, 'a@teste.invalid', '000000')->>'situacao' <> 'codigo_invalido' and g->>'codigo' <> '000000'
-    then falhas := falhas || 'codigo errado aceito'; end if;
-  v := public.hof_validar_codigo(cod, 'a@teste.invalid', g->>'codigo');
-  if v->>'situacao' <> 'ok' then falhas := falhas || 'validar codigo'; end if;
+  v := public.hof_iniciar(cod, 'a@teste.invalid');
+  if v->>'situacao' <> 'ok' then falhas := falhas || 'iniciar'; end if;
+  if public.hof_iniciar(cod, 'ninguem@teste.invalid') ? 'token' then falhas := falhas || 'nao cadastrado iniciou'; end if;
   if public.hof_questionario(v->>'token')::text like '%invertido%' then falhas := falhas || 'questionario expõe itens invertidos'; end if;
 
   -- perfil coerente: 5 nos diretos e 1 nos invertidos em É HOJE => todas as dimensões = 5 após recodificação
   select jsonb_agg(jsonb_build_object('item', numero, 'hoje', case when invertido then 1 else 5 end, 'deveria', 3)) into itens from hofstede.itens;
   env := public.hof_enviar_respostas(v->>'token', itens, 'texto 1', null);
   if public.hof_verificar_acesso(cod, 'a@teste.invalid')->>'situacao' <> 'ja_respondeu' then falhas := falhas || 'resposta unica'; end if;
+  if public.hof_iniciar(cod, 'a@teste.invalid')->>'situacao' <> 'ja_respondeu' then falhas := falhas || 'reiniciou apos responder'; end if;
 
   rel := public.hof_relatorio(pid, null);
   if exists (select 1 from jsonb_array_elements(rel->'dimensoes') d where (d->>'media_hoje')::numeric <> 5 or (d->>'gap')::numeric <> -2)
@@ -60,6 +59,7 @@ begin
   update hofstede.pesquisas set fim = now() - interval '1 minute', inicio = now() - interval '2 days' where id = pid;
   if public.hof_verificar_acesso(cod, 'a@teste.invalid')->>'situacao' <> 'encerrada_respondeu' then falhas := falhas || 'encerrada_respondeu'; end if;
   if public.hof_verificar_acesso(cod, 'b@teste.invalid')->>'situacao' <> 'encerrada_nao_respondeu' then falhas := falhas || 'encerrada_nao_respondeu'; end if;
+  if public.hof_iniciar(cod, 'b@teste.invalid') ? 'token' then falhas := falhas || 'iniciou encerrada'; end if;
   update hofstede.pesquisas set inicio = now() + interval '1 day', fim = now() + interval '2 days' where id = pid;
   if public.hof_verificar_acesso(cod, 'b@teste.invalid')->>'situacao' <> 'nao_iniciada' then falhas := falhas || 'nao_iniciada'; end if;
 
