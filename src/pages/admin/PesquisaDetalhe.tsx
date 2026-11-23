@@ -7,6 +7,7 @@ import { Cruzamentos, GraficoDimensoes, LeituraDimensoes, SeloConsenso, SeloGap,
 import { linkPesquisa, linkSite, rotuloColunas } from "./Pesquisas";
 import { EntradaParticipantes, ResultadoInclusao, incluir } from "../../components/Participantes";
 import type { ResultadoParticipantes } from "../../lib/api";
+import { LogoCliente, Marca } from "../../components/Marca";
 
 type Aba = "acompanhamento" | "participantes" | "resultados" | "departamentos" | "qualidade" | "abertas";
 
@@ -31,7 +32,7 @@ export default function PesquisaDetalhe() {
   return (
     <>
       <p className="small nao-imprimir"><Link to="/admin">← Pesquisas</Link></p>
-      <div className="row">
+      <div className="row nao-imprimir">
         <div>
           <h1>{p.titulo}</h1>
           <div className="small muted">{p.empresa_nome} · {fmtData(p.inicio, true)} a {fmtData(p.fim, true)} · {rotuloColunas(p)} · <span className={`selo ${p.status}`}>{p.status}</span></div>
@@ -218,7 +219,12 @@ function AbaResultados({ p, dep, nomeDep }: { p: Pesquisa; dep: string | null; n
 
   return (
     <>
-      <div className="so-impressao"><h2>{nomeDep ?? "Empresa inteira"}</h2></div>
+      <div className="cabecalho-impressao so-impressao">
+        <Marca progresso={1} />
+        <LogoCliente src={p.cliente_logo} nome={p.empresa_nome} />
+      </div>
+      <div className="so-impressao"><h2>{p.titulo} — {nomeDep ?? "Empresa inteira"}</h2>
+        <p className="small">Período: {fmtData(p.inicio)} a {fmtData(p.fim)} · Impresso em {new Date().toLocaleString("pt-BR")}</p></div>
       <div className="grid c3">
         <div className="card"><div className="muted small">Respondentes válidos</div><div className="kpi">{r.respondentes}</div>
           <div className="small muted">de {r.elegiveis} no público{r.excluidas ? ` · ${r.excluidas} excluída(s)` : ""}</div></div>

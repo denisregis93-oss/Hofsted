@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { fmtData, mensagemErro, participante, type RespostaAcesso } from "../../lib/api";
 import { MensagemSituacao } from "./Pesquisa";
+import { CabecalhoParticipante } from "../../components/Marca";
 
 type Item = RespostaAcesso & { codigo: string; titulo: string; empresa_nome: string };
 
@@ -33,8 +34,11 @@ export default function Entrar() {
   }
 
   return (
+    <>
+    <CabecalhoParticipante progresso={0} />
     <div className="container narrow">
-      <h1>Pesquisa de Cultura Organizacional</h1>
+      <h1 style={{ marginTop: 12 }}>Bem-vindo(a) à Pesquisa Cultural</h1>
+      <p className="muted" style={{ marginBottom: 16 }}>Um retrato coletivo de como a cultura da sua empresa é vivida hoje. Leva de 12 a 15 minutos e suas respostas são anônimas.</p>
       {!situacao && !opcoes && (
         <form className="card" onSubmit={entrar}>
           <p>Informe o seu e-mail corporativo para começar.</p>
@@ -75,5 +79,6 @@ export default function Entrar() {
 
       <p className="small muted" style={{ marginTop: 32 }}><Link to="/admin">Área do RH</Link></p>
     </div>
+    </>
   );
 }

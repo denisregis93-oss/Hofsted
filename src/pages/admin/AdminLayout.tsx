@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 import { admin, mensagemErro } from "../../lib/api";
+import { Marca } from "../../components/Marca";
 
 export default function AdminLayout() {
   const [sessao, setSessao] = useState<Session | null | undefined>(undefined);
@@ -34,7 +35,7 @@ export default function AdminLayout() {
   return (
     <>
       <header className="topbar">
-        <NavLink to="/admin" end className="marca">Diagnóstico Cultural · RH</NavLink>
+        <NavLink to="/admin" end style={{ textDecoration: "none", marginRight: "auto" }}><Marca progresso={1} /></NavLink>
         <nav>
           <NavLink to="/admin" end>Pesquisas</NavLink>
           <NavLink to="/admin/funcionarios">Funcionários</NavLink>

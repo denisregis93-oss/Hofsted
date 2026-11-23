@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { mensagemErro, participante, type RelatorioIndividual } from "../../lib/api";
 import { DIM, descreverNivel, direcaoGap, fmt, fmtGap, type CodigoDimensao } from "../../lib/metodologia";
 import { GraficoDimensoes } from "../../components/Resultados";
+import { LogoCliente, Marca } from "../../components/Marca";
 
 export default function MeuRelatorio() {
   const { codigo = "" } = useParams();
@@ -48,6 +49,10 @@ export default function MeuRelatorio() {
 
   return (
     <div className="container">
+      <div className="cabecalho-impressao">
+        <Marca progresso={1} />
+        <LogoCliente src={rel.pesquisa.cliente_logo} nome={rel.pesquisa.empresa_nome} />
+      </div>
       <div className="muted small">{rel.pesquisa.empresa_nome} · {rel.pesquisa.titulo}</div>
       <h1>Seu retrato de percepção cultural</h1>
       <div className="aviso info">

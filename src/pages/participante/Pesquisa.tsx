@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { fmtData, mensagemErro, participante, type InfoPesquisa, type Questionario, type RespostaAcesso } from "../../lib/api";
 import { detectarRespostaReta } from "../../lib/metodologia";
+import { CabecalhoParticipante, LogoCliente } from "../../components/Marca";
 
 type Etapa = "email" | "orientacoes" | "questionario" | "concluido" | "situacao";
 type Nota = 1 | 2 | 3 | 4 | 5;
@@ -41,7 +42,7 @@ export default function Pesquisa() {
   const [mostrarFaltando, setMostrarFaltando] = useState(false);
   const [confirmarReta, setConfirmarReta] = useState(false);
   const [atual, setAtual] = useState(1);
-  const topoRef = useRef<HTMLDivElement>(null);
+  const rolagemAuto = useRef(0);
   const location = useLocation();
   const emailRecebido = (location.state as { email?: string } | null)?.email;
 
@@ -52,6 +53,7 @@ export default function Pesquisa() {
       if (t) {
         participante.questionario(t).then((qq) => {
           setToken(t); setQ(qq);
+          try { setEmail(sessionStorage.getItem(`hof-email-${codigo}`) ?? ""); } catch { /* */ }
           const r = lerRascunho(codigo);
           if (r) { setResp(r.r); setA1(r.a1); setA2(r.a2); }
           setEtapa("questionario");
@@ -65,15 +67,20 @@ export default function Pesquisa() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pergunta atual: a primeira afirmação visível logo abaixo da barra fixa
+  // Pergunta atual: a afirmação que cruza a "linha de leitura" (um terço abaixo do cabeçalho fixo).
+  // Durante a rolagem automática, o destaque já foi definido e a leitura por posição é ignorada.
   useEffect(() => {
     if (etapa !== "questionario") return;
     const atualizar = () => {
-      const limite = (topoRef.current?.getBoundingClientRect().bottom ?? 0) + 8;
-      const itens = document.querySelectorAll<HTMLElement>(".item-q");
-      for (const el of itens) {
-        if (el.getBoundingClientRect().bottom > limite) { setAtual(Number(el.dataset.numero)); return; }
-      }
+      if (Date.now() - rolagemAuto.current < 900) return;
+      const itens = Array.from(document.querySelectorAll<HTMLElement>(".item-q"));
+      if (!itens.length) return;
+      if (window.scrollY < 60) { setAtual(Number(itens[0].dataset.numero)); return; }
+      const topo = document.querySelector(".cabecalho")?.getBoundingClientRect().bottom ?? 0;
+      const linha = topo + (window.innerHeight - topo) / 3;
+      const el = itens.find((x) => { const r = x.getBoundingClientRect(); return r.top <= linha && r.bottom >= linha; })
+        ?? itens.find((x) => x.getBoundingClientRect().top > linha);
+      if (el) setAtual(Number(el.dataset.numero));
     };
     atualizar();
     window.addEventListener("scroll", atualizar, { passive: true });
@@ -102,7 +109,7 @@ export default function Pesquisa() {
       const r = await participante.iniciar(codigo, emailInformado.trim());
       if (r.situacao === "ok" && r.token) {
         setToken(r.token); setNome(r.nome ?? "");
-        try { sessionStorage.setItem(`hof-token-${codigo}`, r.token); } catch { /* */ }
+        try { sessionStorage.setItem(`hof-token-${codigo}`, r.token); sessionStorage.setItem(`hof-email-${codigo}`, emailInformado.trim()); } catch { /* */ }
         setQ(await participante.questionario(r.token));
         setEtapa("orientacoes");
       } else { setAcesso(r as RespostaAcesso); setEtapa("situacao"); }
@@ -111,8 +118,38 @@ export default function Pesquisa() {
   }
 
   function marcar(item: number, eixo: "hoje" | "deveria", v: Nota) {
+    const antes = resp[item] ?? {};
+    const depois = { ...antes, [eixo]: v };
     setResp((r) => ({ ...r, [item]: { ...r[item], [eixo]: v } }));
+    // Ao completar a afirmação pela primeira vez, leva a próxima ao centro da tela (ritmo sem cansar).
+    const completouAgora = eixos.every((e) => depois[e]) && !eixos.every((e) => antes[e]);
+    if (completouAgora) {
+      const idx = todosItens.findIndex((i) => i.numero === item);
+      const prox = todosItens.slice(idx + 1).find((i) => !eixos.every((e) => resp[i.numero]?.[e]));
+      const reduzir = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      if (prox) { rolagemAuto.current = Date.now() + 280; setAtual(prox.numero); }
+      setTimeout(() => {
+        const alvo = prox ? document.getElementById(`item-${prox.numero}`) : document.getElementById("a1");
+        alvo?.scrollIntoView({ behavior: reduzir ? "auto" : "smooth", block: "center" });
+      }, 280);
+    }
   }
+
+  // Atalhos 1–5: marcam a primeira coluna vazia da afirmação em destaque.
+  useEffect(() => {
+    if (etapa !== "questionario") return;
+    const tecla = (ev: KeyboardEvent) => {
+      const alvo = ev.target as HTMLElement;
+      if (alvo.tagName === "TEXTAREA" || alvo.tagName === "INPUT" && (alvo as HTMLInputElement).type !== "radio") return;
+      if (ev.ctrlKey || ev.metaKey || ev.altKey || !/^[1-5]$/.test(ev.key)) return;
+      const eixo = eixos.find((e) => !resp[atual]?.[e]);
+      if (!eixo) return;
+      ev.preventDefault();
+      marcar(atual, eixo, Number(ev.key) as Nota);
+    };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  });
 
   async function enviar() {
     setErro("");
@@ -149,17 +186,33 @@ export default function Pesquisa() {
       <p>Confira o link recebido. Se o problema continuar, fale com o RH.</p></div></div>
   );
 
-  const cabecalho = (
-    <header style={{ marginBottom: 16 }}>
-      <div className="muted small">{info.empresa_nome}</div>
-      <h1>{info.titulo}</h1>
-      <div className="muted small">Período: {fmtData(info.inicio, true)} a {fmtData(info.fim, true)}</div>
-    </header>
+  const total = todosItens.length || 36;
+  const abertura = (
+    <div className="abertura-cliente">
+      <div>
+        <div className="muted small">{info.empresa_nome}</div>
+        <h1 style={{ margin: "2px 0" }}>{info.titulo}</h1>
+        <div className="muted small">Aberta de {fmtData(info.inicio, true)} a {fmtData(info.fim, true)}</div>
+      </div>
+      <LogoCliente src={info.cliente_logo} nome={info.cliente_logo ? info.empresa_nome : undefined} />
+    </div>
   );
 
   return (
-    <div className="container narrow">
-      {cabecalho}
+    <>
+      <CabecalhoParticipante
+        email={etapa === "email" ? undefined : email || undefined}
+        pergunta={etapa === "questionario" ? atual : undefined}
+        total={etapa === "questionario" ? total : undefined}
+        progresso={etapa === "concluido" ? 1 : respondidos / total}>
+        {etapa === "questionario" && (
+          <ul className="legenda-escala" aria-label="Legenda das notas">
+            {ESCALA.map((t, i) => <li key={t}><b>{i + 1}</b>{t}</li>)}
+          </ul>
+        )}
+      </CabecalhoParticipante>
+      <div className="container narrow">
+      {etapa !== "questionario" && abertura}
       {erro && <div className="aviso erro" role="alert">{erro}</div>}
       {aviso && <div className="aviso info" role="status">{aviso}</div>}
 
@@ -204,30 +257,25 @@ export default function Pesquisa() {
 
       {etapa === "questionario" && q && (
         <>
-          <div className="progresso nao-imprimir" ref={topoRef}>
-            <div className="row small">
-              <strong className="pergunta-atual">Pergunta {atual} de {todosItens.length}</strong>
-              <span className="spacer" />
-              <span className="muted">{respondidos} respondida(s)</span>
-            </div>
-            <div className="barra" aria-hidden><div style={{ width: `${(respondidos / todosItens.length) * 100}%` }} /></div>
-            <ul className="legenda-escala" aria-label="Legenda das notas">
-              {ESCALA.map((t, i) => <li key={t}><b>{i + 1}</b>{t}</li>)}
-            </ul>
-          </div>
+          <p className="dica-teclado">Dica: use as teclas <kbd>1</kbd> a <kbd>5</kbd> para marcar a afirmação em destaque.</p>
           {q.partes.map((p) => (
-            <section className="card" key={p.ordem}>
-              <h2 style={{ marginTop: 0 }}>Parte {p.ordem} — {p.nome}</h2>
-              <p className="muted small">{p.descricao}</p>
+            <section key={p.ordem} aria-labelledby={`parte-${p.ordem}`}>
+              <div className="parte">
+                <span className="n">Parte {p.ordem} de {q.partes.length}</span>
+                <h2 id={`parte-${p.ordem}`}>{p.nome}</h2>
+                <p>{p.descricao}</p>
+              </div>
               {p.itens.map((i) => {
                 const r = resp[i.numero] ?? {};
                 const falta = mostrarFaltando && !completo(i.numero);
+                const classe = ["item-q", falta ? "faltando" : "", i.numero === atual ? "foco" : "", completo(i.numero) ? "feita" : ""].join(" ");
                 return (
-                  <div className={`item-q ${falta ? "faltando" : ""}`} key={i.numero} id={`item-${i.numero}`} data-numero={i.numero}>
-                    <div className="texto"><span className="num">{i.numero}.</span>{i.texto}</div>
+                  <div className={classe} key={i.numero} id={`item-${i.numero}`} data-numero={i.numero}
+                    onFocusCapture={() => setAtual(i.numero)} onPointerDown={() => setAtual(i.numero)}>
+                    <div className="texto"><small>Afirmação {i.numero}</small>{i.texto}</div>
                     <div className={`escalas ${eixos.length === 1 ? "uma" : ""}`}>
                       {eixos.map((eixo) => (
-                        <fieldset className={`escala ${eixo}`} key={eixo} style={{ border: "none", padding: 0, margin: 0 }}>
+                        <fieldset className={`escala ${eixo}`} key={eixo}>
                           <legend className="rot">{eixo === "hoje" ? "É HOJE" : "DEVERIA SER"}</legend>
                           <div className="opcoes">
                             {([1, 2, 3, 4, 5] as Nota[]).map((v) => (
@@ -238,6 +286,7 @@ export default function Pesquisa() {
                               </label>
                             ))}
                           </div>
+                          <div className="extremos" aria-hidden><span>Discordo</span><span>Neutro</span><span>Concordo</span></div>
                         </fieldset>
                       ))}
                     </div>
@@ -246,7 +295,7 @@ export default function Pesquisa() {
               })}
             </section>
           ))}
-          <section className="card">
+          <section className="card" style={{ marginTop: 24 }}>
             <h2 style={{ marginTop: 0 }}>Observações finais (opcional)</h2>
             <label htmlFor="a1">1. Qual é, na sua visão, o maior desalinhamento cultural da empresa hoje?</label>
             <textarea id="a1" maxLength={4000} value={a1} onChange={(e) => setA1(e.target.value)} />
@@ -262,7 +311,7 @@ export default function Pesquisa() {
           )}
           <div className="row">
             <button onClick={enviar} disabled={ocupado}>{ocupado ? "Enviando…" : confirmarReta ? "Enviar mesmo assim" : "Enviar respostas"}</button>
-            <span className="small muted">Após o envio, não será possível alterar as respostas.</span>
+            <span className="small muted">{respondidos} de {total} afirmações completas. Após o envio, não será possível alterar as respostas.</span>
           </div>
         </>
       )}
@@ -282,7 +331,8 @@ export default function Pesquisa() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

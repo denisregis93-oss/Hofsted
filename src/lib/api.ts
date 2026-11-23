@@ -30,18 +30,18 @@ export type Situacao =
 export interface InfoPesquisa {
   titulo: string; descricao: string | null; empresa_nome: string; inicio: string; fim: string;
   status: "agendada" | "aberta" | "encerrada"; responsavel_nome: string; responsavel_email: string;
-  coletar_hoje: boolean; coletar_deveria: boolean;
+  coletar_hoje: boolean; coletar_deveria: boolean; cliente_logo?: string | null;
 }
 export interface RespostaAcesso {
   situacao: Situacao; inicio?: string; fim?: string; nome?: string; respondeu_em?: string | null;
   responsavel_nome?: string; responsavel_email?: string;
 }
 export interface Questionario {
-  pesquisa: { titulo: string; empresa_nome: string; fim: string; responsavel_nome: string; responsavel_email: string; coletar_hoje: boolean; coletar_deveria: boolean };
+  pesquisa: { titulo: string; empresa_nome: string; fim: string; responsavel_nome: string; responsavel_email: string; coletar_hoje: boolean; coletar_deveria: boolean; cliente_logo?: string | null };
   partes: { ordem: number; nome: string; descricao: string; itens: { numero: number; texto: string }[] }[];
 }
 export interface RelatorioIndividual {
-  pesquisa: { titulo: string; empresa_nome: string; fim: string; status: string; coletar_hoje: boolean; coletar_deveria: boolean };
+  pesquisa: { titulo: string; empresa_nome: string; fim: string; status: string; coletar_hoje: boolean; coletar_deveria: boolean; cliente_logo?: string | null };
   departamento: string;
   meu: { dimensao: CodigoDimensao; hoje: number | null; deveria: number | null; gap: number | null }[];
   departamento_media: EstatDimensao[];
@@ -67,7 +67,7 @@ export interface Pesquisa {
   id: string; codigo: string; titulo: string; descricao: string | null; empresa_nome: string;
   inicio: string; fim: string; responsavel_nome: string; responsavel_email: string;
   status: "agendada" | "aberta" | "encerrada"; elegiveis: number; respondentes: number;
-  coletar_hoje: boolean; coletar_deveria: boolean; publico: "todos" | "lista";
+  coletar_hoje: boolean; coletar_deveria: boolean; publico: "todos" | "lista"; cliente_logo?: string | null;
 }
 export interface ResultadoParticipantes {
   incluidos: number; ja_estavam: number; cadastrados: number;

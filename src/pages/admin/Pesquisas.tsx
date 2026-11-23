@@ -2,6 +2,21 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { admin, fmtData, mensagemErro, type Pesquisa, type ResultadoParticipantes } from "../../lib/api";
 import { EntradaParticipantes, ResultadoInclusao, incluir } from "../../components/Participantes";
+import { LogoCliente } from "../../components/Marca";
+
+/** Lê a imagem do logotipo e reduz para no máximo 600×200 px (PNG). SVG pequeno é mantido como está. */
+async function prepararLogo(f: File): Promise<string> {
+  const dataUrl = await new Promise<string>((ok, falha) => {
+    const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = falha; r.readAsDataURL(f);
+  });
+  if (f.type === "image/svg+xml" && dataUrl.length < 300000) return dataUrl;
+  const img = await new Promise<HTMLImageElement>((ok, falha) => { const i = new Image(); i.onload = () => ok(i); i.onerror = falha; i.src = dataUrl; });
+  const escala = Math.min(1, 600 / img.width, 200 / img.height);
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.width * escala); c.height = Math.round(img.height * escala);
+  c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL("image/png");
+}
 
 /** Endereço do site para divulgar: o funcionário só informa o e-mail. */
 export function linkSite() {
@@ -80,6 +95,28 @@ export default function Pesquisas() {
             <div><label htmlFor="rn">Responsável pela pesquisa</label><input id="rn" required value={edit.responsavel_nome} onChange={(e) => setEdit({ ...edit, responsavel_nome: e.target.value })} /></div>
             <div><label htmlFor="re">E-mail do responsável (para justificativas)</label><input id="re" type="email" required value={edit.responsavel_email} onChange={(e) => setEdit({ ...edit, responsavel_email: e.target.value })} /></div>
           </div>
+          <fieldset style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "8px 14px", marginTop: 14 }}>
+            <legend style={{ fontWeight: 600, fontSize: ".9rem", padding: "0 4px" }}>Logotipo do cliente</legend>
+            <div className="row">
+              {edit.cliente_logo ? <LogoCliente src={edit.cliente_logo} nome={edit.empresa_nome} /> : <span className="small muted">Sem logotipo: o nome da empresa aparece no lugar.</span>}
+              <span className="spacer" />
+              <label className="btn sec" style={{ margin: 0 }}>
+                {edit.cliente_logo ? "Trocar imagem" : "Enviar imagem"}
+                <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: "none" }}
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0]; e.target.value = "";
+                    if (!f) return;
+                    try {
+                      const logo = await prepararLogo(f);
+                      if (logo.length > 400000) { setErro("Imagem grande demais. Use um arquivo menor (até ~300 KB)."); return; }
+                      setEdit((x) => ({ ...x!, cliente_logo: logo }));
+                    } catch { setErro("Não foi possível ler a imagem."); }
+                  }} />
+              </label>
+              {edit.cliente_logo && <button type="button" className="link" onClick={() => setEdit({ ...edit, cliente_logo: "" })}>Remover</button>}
+            </div>
+            <p className="small muted">Aparece na abertura da pesquisa e na impressão dos resultados. PNG ou SVG com fundo transparente fica melhor.</p>
+          </fieldset>
           <fieldset style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "8px 14px", marginTop: 14 }}>
             <legend style={{ fontWeight: 600, fontSize: ".9rem", padding: "0 4px" }}>Colunas do questionário</legend>
             <label className="row" style={{ fontWeight: 400, margin: "6px 0" }}>
