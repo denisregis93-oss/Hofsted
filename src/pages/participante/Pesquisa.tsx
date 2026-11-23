@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { fmtData, mensagemErro, participante, type InfoPesquisa, type Questionario, type RespostaAcesso } from "../../lib/api";
 import { detectarRespostaReta } from "../../lib/metodologia";
 
@@ -40,6 +40,10 @@ export default function Pesquisa() {
   const [ocupado, setOcupado] = useState(false);
   const [mostrarFaltando, setMostrarFaltando] = useState(false);
   const [confirmarReta, setConfirmarReta] = useState(false);
+  const [atual, setAtual] = useState(1);
+  const topoRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const emailRecebido = (location.state as { email?: string } | null)?.email;
 
   useEffect(() => {
     participante.info(codigo).then(setInfo).catch(() => setInfo(null));
@@ -57,6 +61,27 @@ export default function Pesquisa() {
   }, [codigo]);
 
   useEffect(() => {
+    if (emailRecebido) { setEmail(emailRecebido); iniciarCom(emailRecebido); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Pergunta atual: a primeira afirmação visível logo abaixo da barra fixa
+  useEffect(() => {
+    if (etapa !== "questionario") return;
+    const atualizar = () => {
+      const limite = (topoRef.current?.getBoundingClientRect().bottom ?? 0) + 8;
+      const itens = document.querySelectorAll<HTMLElement>(".item-q");
+      for (const el of itens) {
+        if (el.getBoundingClientRect().bottom > limite) { setAtual(Number(el.dataset.numero)); return; }
+      }
+    };
+    atualizar();
+    window.addEventListener("scroll", atualizar, { passive: true });
+    window.addEventListener("resize", atualizar);
+    return () => { window.removeEventListener("scroll", atualizar); window.removeEventListener("resize", atualizar); };
+  }, [etapa, q]);
+
+  useEffect(() => {
     if (etapa === "questionario") salvarRascunho(codigo, { r: resp, a1, a2 });
   }, [resp, a1, a2, etapa, codigo]);
 
@@ -68,9 +93,13 @@ export default function Pesquisa() {
 
   async function continuarEmail(e: React.FormEvent) {
     e.preventDefault();
+    await iniciarCom(email);
+  }
+
+  async function iniciarCom(emailInformado: string) {
     setErro(""); setAviso(""); setOcupado(true);
     try {
-      const r = await participante.iniciar(codigo, email.trim());
+      const r = await participante.iniciar(codigo, emailInformado.trim());
       if (r.situacao === "ok" && r.token) {
         setToken(r.token); setNome(r.nome ?? "");
         try { sessionStorage.setItem(`hof-token-${codigo}`, r.token); } catch { /* */ }
@@ -175,8 +204,12 @@ export default function Pesquisa() {
 
       {etapa === "questionario" && q && (
         <>
-          <div className="progresso nao-imprimir">
-            <div className="row small"><span>{respondidos} de {todosItens.length} afirmações respondidas</span></div>
+          <div className="progresso nao-imprimir" ref={topoRef}>
+            <div className="row small">
+              <strong className="pergunta-atual">Pergunta {atual} de {todosItens.length}</strong>
+              <span className="spacer" />
+              <span className="muted">{respondidos} respondida(s)</span>
+            </div>
             <div className="barra" aria-hidden><div style={{ width: `${(respondidos / todosItens.length) * 100}%` }} /></div>
             <ul className="legenda-escala" aria-label="Legenda das notas">
               {ESCALA.map((t, i) => <li key={t}><b>{i + 1}</b>{t}</li>)}
@@ -190,7 +223,7 @@ export default function Pesquisa() {
                 const r = resp[i.numero] ?? {};
                 const falta = mostrarFaltando && !completo(i.numero);
                 return (
-                  <div className={`item-q ${falta ? "faltando" : ""}`} key={i.numero} id={`item-${i.numero}`}>
+                  <div className={`item-q ${falta ? "faltando" : ""}`} key={i.numero} id={`item-${i.numero}`} data-numero={i.numero}>
                     <div className="texto"><span className="num">{i.numero}.</span>{i.texto}</div>
                     <div className={`escalas ${eixos.length === 1 ? "uma" : ""}`}>
                       {eixos.map((eixo) => (
@@ -253,7 +286,7 @@ export default function Pesquisa() {
   );
 }
 
-function MensagemSituacao({ a, codigo, voltar }: { a: RespostaAcesso; codigo: string; voltar: () => void }) {
+export function MensagemSituacao({ a, codigo, voltar }: { a: RespostaAcesso; codigo: string; voltar: () => void }) {
   const resp = a.responsavel_nome ? <><strong>{a.responsavel_nome}</strong> ({a.responsavel_email && <a href={`mailto:${a.responsavel_email}`}>{a.responsavel_email}</a>})</> : "o responsável pela pesquisa";
   let tipo = "info", titulo = "", corpo: React.ReactNode = null;
   switch (a.situacao) {

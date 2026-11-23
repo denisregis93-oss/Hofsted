@@ -51,6 +51,9 @@ export interface RelatorioIndividual {
 export const participante = {
   info: (codigo: string) => rpc<InfoPesquisa | null>("hof_info_pesquisa", { p_codigo: codigo }),
   verificar: (codigo: string, email: string) => rpc<RespostaAcesso>("hof_verificar_acesso", { p_codigo: codigo, p_email: email }),
+  minhasPesquisas: (email: string) =>
+    rpc<{ cadastrado: boolean; nome?: string; pesquisas: (RespostaAcesso & { codigo: string; titulo: string; empresa_nome: string })[] }>(
+      "hof_minhas_pesquisas", { p_email: email }),
   iniciar: (codigo: string, email: string) =>
     rpc<Omit<RespostaAcesso, "situacao"> & { situacao: Situacao | "ok"; token?: string }>("hof_iniciar", { p_codigo: codigo, p_email: email }),
   questionario: (token: string) => rpc<Questionario>("hof_questionario", { p_token: token }),

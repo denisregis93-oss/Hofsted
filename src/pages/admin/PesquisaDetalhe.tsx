@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import { admin, fmtData, mensagemErro, type Acompanhamento, type ItemQualidade, type Pesquisa, type Relatorio } from "../../lib/api";
 import { DIM, ORIENTACAO_FLAGS, ROTULOS_FLAGS, alertas, classificarConsenso, fmt, fmtGap, principal, temGap, type EstatDimensao } from "../../lib/metodologia";
 import { Cruzamentos, GraficoDimensoes, LeituraDimensoes, SeloConsenso, SeloGap, TabelaDimensoes } from "../../components/Resultados";
-import { linkPesquisa, rotuloColunas } from "./Pesquisas";
+import { linkPesquisa, linkSite, rotuloColunas } from "./Pesquisas";
 import { EntradaParticipantes, ResultadoInclusao, incluir } from "../../components/Participantes";
 import type { ResultadoParticipantes } from "../../lib/api";
 
@@ -38,9 +38,14 @@ export default function PesquisaDetalhe() {
         </div>
       </div>
       <div className="card nao-imprimir" style={{ marginTop: 12 }}>
-        <div className="small muted">Link para enviar aos funcionários:</div>
-        <div className="row"><code style={{ wordBreak: "break-all" }}>{linkPesquisa(p.codigo)}</code>
-          <button className="sec" onClick={() => navigator.clipboard?.writeText(linkPesquisa(p.codigo))}>Copiar</button></div>
+        <div className="small muted">Endereço para divulgar aos funcionários (eles só informam o e-mail):</div>
+        <div className="row"><code style={{ wordBreak: "break-all" }}>{linkSite()}</code>
+          <button className="sec" onClick={() => navigator.clipboard?.writeText(linkSite())}>Copiar</button></div>
+        <details className="small" style={{ marginTop: 6 }}>
+          <summary>Link direto desta pesquisa (opcional)</summary>
+          <div className="row" style={{ marginTop: 4 }}><code style={{ wordBreak: "break-all" }}>{linkPesquisa(p.codigo)}</code>
+            <button className="link" onClick={() => navigator.clipboard?.writeText(linkPesquisa(p.codigo))}>Copiar</button></div>
+        </details>
       </div>
 
       <div className="tabs" role="tablist">

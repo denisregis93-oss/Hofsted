@@ -5,7 +5,9 @@ Aplicação para pesquisa de **cultura organizacional percebida** entre funcion�
 ## Funcionalidades
 
 **Funcionário (link `#/p/<código>`)**
-- Informa o e-mail e responde o questionário. O sistema não envia e-mails: o RH divulga o link como preferir.
+- Abre o endereço do site (sem código) e informa o e-mail. O sistema confere se o e-mail está na lista de alguma pesquisa aberta: se houver uma, abre direto; se houver mais de uma, mostra a lista para escolher. O link direto `#/p/<código>` continua funcionando.
+- Durante o questionário, a barra fixa no topo mostra a pergunta atual ("Pergunta 13 de 36") e a legenda da escala de 1 a 5.
+- Responde o questionário. O sistema não envia e-mails: o RH divulga o link como preferir.
 - **Atenção:** o e-mail não é verificado. Quem souber o e-mail de um colega que está na lista pode responder no lugar dele (decisão do projeto, em troca de simplicidade).
 - Só funcionários cadastrados e incluídos no público da pesquisa podem responder; **uma resposta por pesquisa**.
 - Fora do prazo: antes do início informa a data de abertura; depois do fim informa se a pessoa **respondeu** ou **deixou de responder** e, nesse caso, recomenda **justificar ao responsável** (com link de e-mail).

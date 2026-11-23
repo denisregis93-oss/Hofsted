@@ -1,5 +1,6 @@
-import { HashRouter, Link, Route, Routes, useParams } from "react-router-dom";
+import { HashRouter, Route, Routes, useParams } from "react-router-dom";
 import Pesquisa from "./pages/participante/Pesquisa";
+import Entrar from "./pages/participante/Entrar";
 import MeuRelatorio from "./pages/participante/MeuRelatorio";
 import AdminLayout from "./pages/admin/AdminLayout";
 import Pesquisas from "./pages/admin/Pesquisas";
@@ -14,23 +15,11 @@ function PesquisaPorCodigo() {
   return <Pesquisa key={codigo} />;
 }
 
-function Inicio() {
-  return (
-    <div className="container narrow">
-      <h1>Diagnóstico de Cultura Organizacional</h1>
-      <div className="card">
-        <p>Se você é funcionário, acesse a pesquisa pelo link que recebeu do RH.</p>
-        <p><Link to="/admin">Área do RH</Link></p>
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
   return (
     <HashRouter>
       <Routes>
-        <Route path="/" element={<Inicio />} />
+        <Route path="/" element={<Entrar />} />
         <Route path="/p/:codigo" element={<PesquisaPorCodigo />} />
         <Route path="/p/:codigo/meu-relatorio" element={<MeuRelatorio />} />
         <Route path="/admin" element={<AdminLayout />}>
@@ -40,7 +29,7 @@ export default function App() {
           <Route path="evolucao" element={<Evolucao />} />
           <Route path="metodologia" element={<Metodologia />} />
         </Route>
-        <Route path="*" element={<Inicio />} />
+        <Route path="*" element={<Entrar />} />
       </Routes>
     </HashRouter>
   );

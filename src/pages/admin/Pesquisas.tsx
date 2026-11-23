@@ -3,8 +3,13 @@ import { Link } from "react-router-dom";
 import { admin, fmtData, mensagemErro, type Pesquisa, type ResultadoParticipantes } from "../../lib/api";
 import { EntradaParticipantes, ResultadoInclusao, incluir } from "../../components/Participantes";
 
+/** Endereço do site para divulgar: o funcionário só informa o e-mail. */
+export function linkSite() {
+  return `${window.location.origin}${window.location.pathname}`;
+}
+/** Link direto para uma pesquisa específica (opcional). */
 export function linkPesquisa(codigo: string) {
-  return `${window.location.origin}${window.location.pathname}#/p/${codigo}`;
+  return `${linkSite()}#/p/${codigo}`;
 }
 
 /** Converte ISO para o valor de <input type="datetime-local"> no horário local. */
@@ -52,7 +57,7 @@ export default function Pesquisas() {
   }
 
   function copiar(p: Pesquisa) {
-    navigator.clipboard?.writeText(linkPesquisa(p.codigo));
+    navigator.clipboard?.writeText(linkSite());
     setCopiado(p.id); setTimeout(() => setCopiado(""), 2000);
   }
 
