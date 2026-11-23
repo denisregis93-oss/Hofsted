@@ -15,7 +15,7 @@ Aplicação para pesquisa de **cultura organizacional percebida** entre funcion�
 
 **RH (`#/admin`)**
 - Cadastro de funcionários por planilha (.xlsx/.xls/.csv: Nome, E-mail, Departamento), com prévia, validação e opção de inativar ausentes, ou **manualmente**, um a um.
-- **Público de cada pesquisa:** todos os funcionários ativos, ou uma **lista específica de e-mails** (colada ou importada de planilha). Quem não está no cadastro pode ser incluído com "Nome; e-mail; Departamento", que cria o cadastro junto. Na aba Participantes é possível incluir mais pessoas e remover quem ainda não respondeu.
+- **Público de cada pesquisa:** todos os funcionários ativos (quem for cadastrado ou reativado depois entra automaticamente enquanto a pesquisa não terminar), ou uma **lista específica de e-mails** (colada ou importada de planilha). Quem não está no cadastro pode ser incluído com "Nome; e-mail; Departamento", que cria o cadastro junto. Na aba Participantes é possível incluir mais pessoas e remover quem ainda não respondeu.
 - Criação de quantas pesquisas quiser, com período (início/fim), responsável, nome da empresa e **colunas do questionário**: É HOJE, DEVERIA SER ou as duas. Com uma só coluna não há gap; os relatórios mostram apenas o que foi coletado. As colunas ficam travadas quando a pesquisa recebe a primeira resposta. O público é congelado na criação (com opção de incluir novos funcionários depois).
 - Acompanhamento de adesão por departamento e lista de pendentes.
 - Resultados da **empresa** e por **departamento**: médias, desvio-padrão (consenso), gap, leitura de cada dimensão, 6 cruzamentos em quadrantes (hoje × desejado), alertas de **discurso duplo** e **percepção dividida**, detalhe por item.

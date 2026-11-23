@@ -43,7 +43,7 @@ export default function Entrar() {
           {erro && <div className="aviso erro" role="alert">{erro}</div>}
           {semPesquisa && (
             <div className="aviso info" role="status">
-              Não há pesquisa aberta para este e-mail no momento. Se você recebeu um convite, confira o e-mail digitado ou fale com o RH.
+              Seu e-mail está cadastrado, mas não está na lista de nenhuma pesquisa aberta no momento. Confira se digitou o e-mail certo ou fale com o RH.
             </div>
           )}
           <div className="row" style={{ marginTop: 16 }}>
